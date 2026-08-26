@@ -1,0 +1,131 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { isFirebaseAdminConfigured, handleCors, successResponse, errorResponse, paginatedResponse, getAuthUser, requireRole, parsePagination } from '@/lib/api-helpers';
+import { DEMO_COMMENTS } from '@/lib/mock-data';
+
+export async function OPTIONS(request: NextRequest) {
+  const cors = handleCors(request);
+  if (cors) return cors;
+  return new NextResponse(null, { status: 405 });
+}
+
+// GET /api/comments?articleId=xxx&status=xxx
+export async function GET(request: NextRequest) {
+  const cors = handleCors(request);
+  if (cors) return cors;
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const articleId = searchParams.get('articleId');
+    const status = searchParams.get('status');
+    const { page, limit } = parsePagination(searchParams);
+
+    if (!isFirebaseAdminConfigured()) {
+      let filtered = [...DEMO_COMMENTS];
+      if (articleId) filtered = filtered.filter((c) => c.articleId === articleId);
+      if (status) filtered = filtered.filter((c) => c.status === status);
+      else filtered = filtered.filter((c) => c.status === 'approved'); // Only show approved by default
+      const total = filtered.length;
+      const start = (page - 1) * limit;
+      return paginatedResponse(filtered.slice(start, start + limit), page, limit, total);
+    }
+
+    const { adminDb } = await import('@/lib/firebase/admin');
+    let query = adminDb.collection('comments').orderBy('createdAt', 'desc');
+
+    const snap = await query.get();
+    let comments = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    if (articleId) comments = comments.filter((c: Record<string, unknown>) => c.articleId === articleId);
+    if (status) comments = comments.filter((c: Record<string, unknown>) => c.status === status);
+    else comments = comments.filter((c: Record<string, unknown>) => c.status === 'approved');
+
+    const total = comments.length;
+    const start = (page - 1) * limit;
+    return paginatedResponse(comments.slice(start, start + limit), page, limit, total);
+  } catch (error) {
+    console.error('Error fetching comments:', error);
+    return errorResponse('Failed to fetch comments');
+  }
+}
+
+// POST /api/comments - Create comment (public) or update status (admin)
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const { articleId, authorName, content, authorEmail, parentId, commentId, status } = body;
+
+    // If commentId is provided, this is an admin update (change status)
+    if (commentId && status) {
+      const { authorized } = await requireRole(request, ['super_admin', 'editor']);
+      if (!authorized && isFirebaseAdminConfigured()) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      }
+
+      if (!isFirebaseAdminConfigured()) {
+        const comment = DEMO_COMMENTS.find((c) => c.id === commentId);
+        if (comment) comment.status = status;
+        return successResponse(comment || { id: commentId, status });
+      }
+
+      const { adminDb } = await import('@/lib/firebase/admin');
+      const { FieldValue } = await import('firebase-admin/firestore');
+      await adminDb.collection('comments').doc(commentId).update({
+        status,
+        updatedAt: FieldValue.serverTimestamp(),
+      });
+      return successResponse({ id: commentId, status });
+    }
+
+    // Public comment creation
+    if (!articleId || !authorName || !content) {
+      return errorResponse('articleId, authorName, and content are required', 400);
+    }
+
+    if (!isFirebaseAdminConfigured()) {
+      const newComment = {
+        id: `comment-${Date.now()}`,
+        articleId,
+        authorName,
+        authorEmail: authorEmail || undefined,
+        content,
+        status: 'pending' as const,
+        parentId: parentId || undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      return NextResponse.json({ success: true, data: newComment }, { status: 201 });
+    }
+
+    const { adminDb } = await import('@/lib/firebase/admin');
+    const { FieldValue } = await import('firebase-admin/firestore');
+
+    // Check if comments require approval
+    let autoApprove = true;
+    try {
+      const settingsDoc = await adminDb.collection('settings').doc('site').get();
+      if (settingsDoc.exists) {
+        autoApprove = !settingsDoc.data()?.comments?.requireApproval;
+      }
+    } catch {
+      // Default to requiring approval
+      autoApprove = false;
+    }
+
+    const commentData = {
+      articleId,
+      authorName,
+      authorEmail: authorEmail || null,
+      content,
+      status: autoApprove ? 'approved' : 'pending',
+      parentId: parentId || null,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    };
+
+    const docRef = await adminDb.collection('comments').add(commentData);
+    return NextResponse.json({ success: true, data: { id: docRef.id, ...commentData } }, { status: 201 });
+  } catch (error) {
+    console.error('Error with comment:', error);
+    return errorResponse('Failed to process comment');
+  }
+}

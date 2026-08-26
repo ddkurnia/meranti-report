@@ -1,0 +1,89 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isSuperAdmin() {
+      return isAuthenticated() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin';
+    }
+
+    function isEditor() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'editor' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin');
+    }
+
+    function isAuthor() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'author' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'editor' ||
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'super_admin');
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Published articles are publicly readable
+    match /articles/{articleId} {
+      allow read: if resource.data.status == 'published';
+      allow read: if isAuthenticated();
+      allow create: if isAuthor();
+      allow update: if isOwner(resource.data.authorId) || isEditor();
+      allow delete: if isEditor();
+    }
+
+    // Categories - publicly readable, admin writable
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create: if isEditor();
+      allow update: if isEditor();
+      allow delete: if isSuperAdmin();
+    }
+
+    // Authors - publicly readable, admin writable
+    match /authors/{authorId} {
+      allow read: if true;
+      allow create: if isEditor();
+      allow update: if isEditor();
+      allow delete: if isSuperAdmin();
+    }
+
+    // Media - readable by auth users, writable by authors+
+    match /media/{mediaId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthor();
+      allow delete: if isOwner(resource.data.uploadedBy) || isEditor();
+    }
+
+    // Comments - publicly readable
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      allow update, delete: if isEditor();
+    }
+
+    // Views - publicly writable (for counting), readable by auth
+    match /views/{viewId} {
+      allow create: if true;
+      allow read: if isAuthenticated();
+    }
+
+    // Users - only readable/writable by the user themselves or super admin
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isSuperAdmin();
+      allow write: if isOwner(userId);
+      allow update: if isSuperAdmin();
+    }
+
+    // Settings - only readable/writable by super admin
+    match /settings/{settingsId} {
+      allow read: if isSuperAdmin();
+      allow write: if isSuperAdmin();
+    }
+  }
+}
