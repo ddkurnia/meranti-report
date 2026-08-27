@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
 
     // FIREBASE MODE
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
 
     // Since Firestore doesn't support full-text search, we fetch all published articles
     // and filter client-side. For production, consider Algolia or Elasticsearch.

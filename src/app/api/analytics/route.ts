@@ -73,6 +73,7 @@ export async function GET(request: NextRequest) {
 
     // FIREBASE MODE
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
     const days = parseInt(period, 10);
 
     // Get views data

@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
     const doc = await adminDb.collection('settings').doc('site').get();
 
     if (!doc.exists) {
@@ -47,6 +48,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
 
     await adminDb.collection('settings').doc('site').set(
       {

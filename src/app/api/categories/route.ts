@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
     const snap = await adminDb.collection('categories').orderBy('order', 'asc').get();
     const categories = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     return successResponse(categories);
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
 
     const categoryData = {
       name,

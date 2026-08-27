@@ -3,7 +3,11 @@ import type { ApiResponse, PaginatedResponse } from '@/types';
 
 // Check if server-side Firebase (adminDb) is available for API routes
 export function isFirebaseConfigured(): boolean {
-  return false; // Server-side Firebase disabled - client SDK used directly from browser
+  return !!(
+    process.env.FIREBASE_SERVICE_ACCOUNT_KEY &&
+    process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
+    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID
+  );
 }
 
 // Check if client-side Firebase is configured (for components)
@@ -73,19 +77,13 @@ export function unauthorizedResponse(): NextResponse {
   );
 }
 
-// Verify Firebase ID token via REST API (works without Admin SDK)
-async function verifyTokenRest(token: string): Promise<string | null> {
+// Verify Firebase ID token via Admin SDK
+export async function verifyIdToken(token: string): Promise<string | null> {
   try {
-    const res = await fetch(
-      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken: token }),
-      }
-    );
-    const data = await res.json();
-    return data.users?.[0]?.localId || null;
+    const { adminAuth } = await import('@/lib/firebase/admin');
+    if (!adminAuth) return null;
+    const decoded = await adminAuth.verifyIdToken(token);
+    return decoded.uid;
   } catch {
     return null;
   }
@@ -100,7 +98,7 @@ export async function getAuthUser(request: NextRequest): Promise<string | null> 
   if (!token) return null;
 
   if (isFirebaseConfigured()) {
-    const uid = await verifyTokenRest(token);
+    const uid = await verifyIdToken(token);
     return uid;
   }
 

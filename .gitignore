@@ -87,3 +87,6 @@ Desktop.ini
 # Z-ai sandbox specific
 .zscripts/
 worklog.md
+.env.local
+tool-results/
+scripts/

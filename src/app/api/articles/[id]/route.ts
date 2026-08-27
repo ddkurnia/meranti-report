@@ -31,6 +31,7 @@ export async function GET(
 
     // FIREBASE MODE
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
 
     const doc = await adminDb.collection('articles').doc(id).get();
     if (!doc.exists) return errorResponse('Article not found', 404);
@@ -93,6 +94,7 @@ export async function PUT(
 
     // FIREBASE MODE
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
 
     const doc = await adminDb.collection('articles').doc(id).get();
     if (!doc.exists) return errorResponse('Article not found', 404);
@@ -144,6 +146,7 @@ export async function DELETE(
 
     // FIREBASE MODE
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
     await adminDb.collection('articles').doc(id).delete();
     return successResponse({ deleted: true });
   } catch (error) {

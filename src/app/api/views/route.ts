@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
     const snap = await adminDb
       .collection('views')
       .where('articleId', '==', articleId)
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
 
     // Deduplication: check if same sessionId viewed same article within 1 hour
     const oneHourAgo = new Date();

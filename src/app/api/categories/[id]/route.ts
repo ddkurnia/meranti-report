@@ -26,6 +26,7 @@ export async function GET(
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
     const doc = await adminDb.collection('categories').doc(id).get();
     if (!doc.exists) return errorResponse('Category not found', 404);
 
@@ -66,6 +67,7 @@ export async function PUT(
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
 
     const doc = await adminDb.collection('categories').doc(id).get();
     if (!doc.exists) return errorResponse('Category not found', 404);
@@ -107,6 +109,7 @@ export async function DELETE(
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
     await adminDb.collection('categories').doc(id).delete();
     return successResponse({ deleted: true });
   } catch (error) {

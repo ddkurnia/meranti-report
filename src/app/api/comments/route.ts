@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
     let query = adminDb.collection('comments').orderBy('createdAt', 'desc');
 
     const snap = await query.get();
@@ -68,6 +69,7 @@ export async function POST(request: NextRequest) {
       }
 
       const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
       await adminDb.collection('comments').doc(commentId).update({
         status,
         updatedAt: new Date().toISOString(),
@@ -96,6 +98,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
 
     // Check if comments require approval
     let autoApprove = true;

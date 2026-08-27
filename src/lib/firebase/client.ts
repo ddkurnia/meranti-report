@@ -33,5 +33,5 @@ if (isConfigured) {
   db = null as unknown as Firestore;
 }
 
-export { app, auth, db, adminDb, isFirebaseConfigured };
+export { app, auth, db, isConfigured as isFirebaseClientConfigured };
 export default app;

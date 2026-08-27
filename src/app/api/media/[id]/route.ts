@@ -27,6 +27,7 @@ export async function DELETE(
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
 
     // Get media item to find Cloudinary public ID
     const doc = await adminDb.collection('media').doc(id).get();

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { handleCors, successResponse } from '@/lib/api-helpers';
+import { handleCors, successResponse, errorResponse } from '@/lib/api-helpers';
 
 export async function OPTIONS(request: NextRequest) {
   const cors = handleCors(request);
@@ -37,12 +37,14 @@ export async function GET(request: NextRequest) {
     // Firebase mode: verify token
     try {
       const { adminAuth } = await import('@/lib/firebase/admin');
+      if (!adminAuth) return successResponse(null);
       const decoded = await adminAuth.verifyIdToken(token);
 
       // Get user role from Firestore
       let role = 'author';
       try {
         const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
         const userDoc = await adminDb.collection('users').doc(decoded.uid).get();
         if (userDoc.exists) {
           role = userDoc.data()?.role || 'author';

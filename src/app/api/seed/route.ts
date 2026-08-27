@@ -11,22 +11,13 @@ export async function OPTIONS(request: NextRequest) {
 // POST /api/seed - Seed the database with demo data
 export async function POST(request: NextRequest) {
   try {
-    // Only allow in development
-    if (process.env.NODE_ENV === 'production') {
-      return errorResponse('Seeding is only allowed in development', 403);
-    }
-
-    // Require auth or API key
-    const authHeader = request.headers.get('Authorization');
-    const apiKey = request.headers.get('x-api-key');
+    // Require seed key or auth
+    const body = await request.json().catch(() => ({}));
+    const seedKey = body.seedKey || request.headers.get('x-seed-key');
     const uid = await getAuthUser(request);
 
-    if (!uid && !apiKey && !authHeader) {
-      // Check for a simple seed key in body
-      const body = await request.json().catch(() => ({}));
-      if (body.seedKey !== 'meranti-seed-2025') {
-        return errorResponse('Unauthorized. Provide auth token, API key, or seedKey.', 401);
-      }
+    if (!uid && seedKey !== 'meranti-seed-2025') {
+      return errorResponse('Unauthorized. Provide auth token or seedKey.', 401);
     }
 
     // If Firebase is not configured, just return success
@@ -44,6 +35,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
     const batch = adminDb.batch();
 
     const now = new Date().toISOString();
@@ -71,12 +63,17 @@ export async function POST(request: NextRequest) {
     // Seed articles
     for (const article of DEMO_ARTICLES) {
       const docRef = adminDb.collection('articles').doc(article.id);
-      batch.set(docRef, {
+      const articleData: Record<string, unknown> = {
         ...article,
         createdAt: now,
         updatedAt: now,
-        publishedAt: article.publishedAt ? now : null,
-      });
+        publishedAt: article.status === 'published' ? now : null,
+      };
+      // Ensure dates are ISO strings, not Date objects
+      if (articleData.publishedAt instanceof Date) {
+        articleData.publishedAt = articleData.publishedAt.toISOString();
+      }
+      batch.set(docRef, articleData);
     }
 
     // Seed comments

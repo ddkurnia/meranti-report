@@ -8,7 +8,7 @@ import {
   type User as FirebaseUser,
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import { auth, db, isFirebaseConfigured } from '@/lib/firebase/client';
+import { auth, db, isFirebaseClientConfigured } from '@/lib/firebase/client';
 import type { User } from '@/types';
 
 interface AuthContextType {
@@ -27,7 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!isFirebaseConfigured || !auth) {
+    if (!isFirebaseClientConfigured || !auth) {
       setLoading(false);
       return;
     }
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (fbUser && db) {
         try {
           const userDoc = await getDoc(doc(db, 'users', fbUser.uid));
-          if (userDoc.exists) {
+          if (userDoc.exists()) {
             setUser({ id: userDoc.id, ...(userDoc.data() as Record<string, unknown>) } as User);
           }
         } catch (error) {
@@ -53,20 +53,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    if (!isFirebaseConfigured) {
+    if (!isFirebaseClientConfigured) {
       throw new Error('Firebase is not configured. Please set up your environment variables.');
     }
     const credential = await signInWithEmailAndPassword(auth!, email, password);
     if (db) {
       const userDoc = await getDoc(doc(db, 'users', credential.user.uid));
-      if (userDoc.exists) {
+      if (userDoc.exists()) {
         setUser({ id: userDoc.id, ...(userDoc.data() as Record<string, unknown>) } as User);
       }
     }
   };
 
   const signOut = async () => {
-    if (!isFirebaseConfigured || !auth) return;
+    if (!isFirebaseClientConfigured || !auth) return;
     await firebaseSignOut(auth);
     setUser(null);
     setFirebaseUser(null);

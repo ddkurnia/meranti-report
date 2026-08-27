@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
     const snap = await adminDb
       .collection('media')
       .orderBy('createdAt', 'desc')

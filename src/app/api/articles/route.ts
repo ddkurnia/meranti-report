@@ -39,30 +39,29 @@ export async function GET(request: NextRequest) {
       }
 
       const { adminDb } = await import('@/lib/firebase/admin');
-      const [publishedSnap, draftSnap, allArticlesSnap, viewsSnap] = await Promise.all([
-        adminDb.collection('articles').where('status', '==', 'published').get(),
-        adminDb.collection('articles').where('status', '==', 'draft').get(),
-        adminDb.collection('articles').orderBy('createdAt', 'desc').limit(5).get(),
-        adminDb.collection('articles').orderBy('views', 'desc').limit(5).get(),
-      ]);
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
+      const allSnap = await adminDb.collection('articles').get();
+      const allArticles = allSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      const published = allArticles.filter((d: Record<string, unknown>) => d.status === 'published');
+      const drafts = allArticles.filter((d: Record<string, unknown>) => d.status === 'draft');
+      const recent = [...allArticles].sort((a: Record<string, unknown>, b: Record<string, unknown>) => ((b.updatedAt as string) || '').localeCompare((a.updatedAt as string) || '')).slice(0, 5);
+      const popular = [...allArticles].sort((a: Record<string, unknown>, b: Record<string, unknown>) => ((b.views as number) || 0) - ((a.views as number) || 0)).slice(0, 5);
+
+      const totalViews = published.reduce((sum: number, d: Record<string, unknown>) => sum + ((d.views as number) || 0), 0);
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const todayArticles = publishedSnap.docs.filter((d) => {
-        const c = d.data().createdAt?.toDate?.() || d.data().createdAt;
+      const todayArticles = allArticles.filter((d: Record<string, unknown>) => {
+        const c = d.updatedAt as string;
         return c && new Date(c) >= today;
       });
 
-      const totalViews = publishedSnap.docs.reduce((sum, d) => sum + (d.data().views || 0), 0);
-
-      const recent = allArticlesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      const popular = viewsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
-
       return successResponse({
         stats: {
-          totalArticles: publishedSnap.size + draftSnap.size,
-          publishedArticles: publishedSnap.size,
-          draftArticles: draftSnap.size,
+          totalArticles: allArticles.length,
+          publishedArticles: published.length,
+          draftArticles: drafts.length,
           todayArticles: todayArticles.length,
           totalViews,
           todayViews: Math.floor(Math.random() * 500) + 200,
@@ -88,21 +87,18 @@ export async function GET(request: NextRequest) {
       }
 
       const { adminDb } = await import('@/lib/firebase/admin');
-      let query = adminDb
-        .collection('articles')
-        .where('status', '==', 'published')
-        .orderBy('publishedAt', 'desc')
-        .limit(6);
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
+      const snap = await adminDb.collection('articles').get();
+      let articles = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        .filter((a: Record<string, unknown>) => a.status === 'published');
 
       const catRef = categoryId || category;
       if (catRef) {
         const cat = DEFAULT_CATEGORIES.find((c) => c.id === catRef || c.slug === catRef);
-        if (cat) query = adminDb.collection('articles').where('categoryId', '==', cat.id).where('status', '==', 'published').limit(6);
+        if (cat) articles = articles.filter((a: Record<string, unknown>) => a.categoryId === cat.id);
       }
-
-      const snap = await query.get();
-      let articles: any[] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       if (exclude) articles = articles.filter((a) => a.id !== exclude);
+      articles.sort((a: Record<string, unknown>, b: Record<string, unknown>) => ((b.publishedAt as string) || '').localeCompare((a.publishedAt as string) || ''));
 
       return successResponse(articles.slice(0, 6));
     }
@@ -115,15 +111,13 @@ export async function GET(request: NextRequest) {
       }
 
       const { adminDb } = await import('@/lib/firebase/admin');
-      const snap = await adminDb
-        .collection('articles')
-        .where('breaking', '==', true)
-        .where('status', '==', 'published')
-        .orderBy('publishedAt', 'desc')
-        .limit(10)
-        .get();
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
+      const snap = await adminDb.collection('articles').get();
+      const articles = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        .filter((a: Record<string, unknown>) => a.breaking === true && a.status === 'published')
+        .sort((a: Record<string, unknown>, b: Record<string, unknown>) => ((b.publishedAt as string) || '').localeCompare((a.publishedAt as string) || ''));
 
-      return successResponse(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      return successResponse(articles.slice(0, 10));
     }
 
     // ============ FEATURED ARTICLES ============
@@ -134,38 +128,41 @@ export async function GET(request: NextRequest) {
       }
 
       const { adminDb } = await import('@/lib/firebase/admin');
-      const snap = await adminDb
-        .collection('articles')
-        .where('featured', '==', true)
-        .where('status', '==', 'published')
-        .orderBy('publishedAt', 'desc')
-        .limit(10)
-        .get();
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
+      const snap = await adminDb.collection('articles').get();
+      const articles = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+        .filter((a: Record<string, unknown>) => a.featured === true && a.status === 'published')
+        .sort((a: Record<string, unknown>, b: Record<string, unknown>) => ((b.publishedAt as string) || '').localeCompare((a.publishedAt as string) || ''));
 
-      return successResponse(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+      return successResponse(articles.slice(0, 10));
     }
 
     // ============ FIREBASE MODE ============
     if (isFirebaseConfigured()) {
       const { adminDb } = await import('@/lib/firebase/admin');
-
-      let query: any = adminDb.collection('articles').orderBy('publishedAt', 'desc');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
 
       // Check if this is an admin request (has auth with proper role)
       const uid = await getAuthUser(request);
       const isAdminRequest = !!uid;
 
-      // For public requests, only show published
-      if (!isAdminRequest || !status) {
-        query = adminDb.collection('articles').where('status', '==', 'published').orderBy('publishedAt', 'desc');
-      } else if (status && status !== 'all') {
-        query = adminDb.collection('articles').where('status', '==', status).orderBy('updatedAt', 'desc');
-      } else {
-        query = adminDb.collection('articles').orderBy('updatedAt', 'desc');
+      let snap;
+
+      // For admin requests with status filter
+      if (isAdminRequest && status && status !== 'all') {
+        snap = await adminDb.collection('articles').where('status', '==', status).get();
+      }
+      // For public or admin requests without status filter - get all then filter
+      else {
+        snap = await adminDb.collection('articles').get();
       }
 
-      let snap = await query.get();
       let articles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      // Filter published for public requests
+      if (!isAdminRequest || !status) {
+        articles = articles.filter((a: Record<string, unknown>) => a.status === 'published');
+      }
 
       // Client-side filtering for category (by slug or id)
       if (category) {
@@ -199,6 +196,13 @@ export async function GET(request: NextRequest) {
       if (exclude) {
         articles = articles.filter((a: Record<string, unknown>) => a.id !== exclude);
       }
+
+      // Sort by publishedAt desc
+      articles.sort((a: Record<string, unknown>, b: Record<string, unknown>) => {
+        const da = a.publishedAt as string || '';
+        const db2 = b.publishedAt as string || '';
+        return db2.localeCompare(da);
+      });
 
       const total = articles.length;
       const start = (page - 1) * limit;
@@ -306,6 +310,7 @@ export async function POST(request: NextRequest) {
 
     // Firebase mode
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return errorResponse('Firebase not configured', 503);
 
     const articleSlug = slug || generateSlug(title);
     const now = new Date();
