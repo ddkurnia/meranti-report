@@ -8,7 +8,7 @@ import type { UserRole } from '@/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -119,12 +119,17 @@ function AdminLoading() {
   );
 }
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+/**
+ * Authenticated admin shell: sidebar + topbar + content.
+ * All hooks are called unconditionally (React rules of hooks).
+ */
+function AuthenticatedAdminLayout({ children }: { children: React.ReactNode }) {
   const { user, loading, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Redirect unauthenticated users to login
   useEffect(() => {
     if (!loading && !user) {
       router.push('/admin/login');
@@ -136,7 +141,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <AdminLoading />;
   }
 
-  // Not authenticated - will redirect
+  // Not authenticated - will redirect via useEffect
   if (!user) {
     return <AdminLoading />;
   }
@@ -157,11 +162,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </div>
     );
-  }
-
-  // Login page doesn't need sidebar
-  if (pathname === '/admin/login') {
-    return <>{children}</>;
   }
 
   const initials = user.displayName
@@ -271,4 +271,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       </div>
     </div>
   );
+}
+
+/**
+ * Root admin layout.
+ * Login page bypasses auth entirely — no hooks, no guards.
+ * All other admin routes go through AuthenticatedAdminLayout.
+ */
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+
+  // Login page: render children directly without any auth wrapper
+  if (pathname === '/admin/login') {
+    return <>{children}</>;
+  }
+
+  // All other admin pages: require authentication
+  return <AuthenticatedAdminLayout>{children}</AuthenticatedAdminLayout>;
 }
