@@ -66,13 +66,18 @@ export default function ArticlePage() {
     fetchArticle();
   }, [fetchArticle]);
 
-  // Record view
+  // Record view with sessionId for deduplication
   useEffect(() => {
     if (article) {
+      let sessionId = sessionStorage.getItem('mr-session');
+      if (!sessionId) {
+        sessionId = `session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        sessionStorage.setItem('mr-session', sessionId);
+      }
       fetch('/api/views', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ articleId: article.id }),
+        body: JSON.stringify({ articleId: article.id, sessionId }),
       }).catch(() => {});
     }
   }, [article]);
@@ -227,7 +232,7 @@ export default function ArticlePage() {
               <Clock className="h-3.5 w-3.5" />
               <span>{readingTime} menit baca</span>
             </div>
-            <ViewCounter articleId={article.id} />
+            <ViewCounter articleId={article.id} initialViews={article.views} />
           </div>
 
           {/* Featured Image */}

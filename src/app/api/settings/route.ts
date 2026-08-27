@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isFirebaseConfigured, handleCors, successResponse, errorResponse, requireRole } from '@/lib/api-helpers';
-import { DEFAULT_SETTINGS } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
   const cors = handleCors(request);
@@ -21,7 +20,13 @@ export async function GET(request: NextRequest) {
     const doc = await adminDb.collection('settings').doc('site').get();
 
     if (!doc.exists) {
-      return successResponse(DEFAULT_SETTINGS);
+      return successResponse({
+        siteName: 'Meranti Report',
+        siteDescription: 'Portal Berita Kepulauan Meranti',
+        siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://merantireport.com',
+        locale: 'id_ID',
+        theme: 'light',
+      });
     }
 
     return successResponse(doc.data());

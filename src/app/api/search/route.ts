@@ -30,15 +30,17 @@ export async function GET(request: NextRequest) {
     if (!adminDb) return errorResponse('Firebase not configured', 503);
 
     // Since Firestore doesn't support full-text search, we fetch all published articles
-    // and filter client-side. For production, consider Algolia or Elasticsearch.
+    // and filter/sort client-side. For production, consider Algolia or Elasticsearch.
     const snap = await adminDb
       .collection('articles')
       .where('status', '==', 'published')
-      .orderBy('publishedAt', 'desc')
       .limit(200)
       .get();
 
-    let articles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    let articles = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      .sort((a: Record<string, unknown>, b: Record<string, unknown>) => 
+        String(b.publishedAt || '').localeCompare(String(a.publishedAt || ''))
+      );
 
     // Text search
     articles = articles.filter((a: Record<string, unknown>) => {

@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -16,32 +15,11 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { Newspaper, FileEdit, Eye, TrendingUp, ArrowRight } from 'lucide-react';
 import { formatNumber, formatDateShort } from '@/lib/utils';
-import type { DashboardStats, Article, PopularArticle } from '@/types';
+import { useRealtimeDashboardStats } from '@/hooks/use-realtime';
+import type { Article, PopularArticle } from '@/types';
 
 export default function AdminDashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentArticles, setRecentArticles] = useState<Article[]>([]);
-  const [popularArticles, setPopularArticles] = useState<PopularArticle[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        const res = await fetch('/api/articles?dashboard=true');
-        if (res.ok) {
-          const data = await res.json();
-          setStats(data.stats || null);
-          setRecentArticles(data.recentArticles || []);
-          setPopularArticles(data.popularArticles || []);
-        }
-      } catch (err) {
-        console.error('Failed to fetch dashboard data:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchData();
-  }, []);
+  const { stats, recentArticles, popularArticles, loading } = useRealtimeDashboardStats();
 
   const statCards = [
     {

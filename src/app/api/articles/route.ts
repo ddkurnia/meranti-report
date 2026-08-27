@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isFirebaseConfigured, handleCors, paginatedResponse, successResponse, errorResponse, parsePagination, getAuthUser, generateSlug } from '@/lib/api-helpers';
-import { DEMO_ARTICLES, DEMO_DASHBOARD_STATS, DEFAULT_CATEGORIES } from '@/lib/mock-data';
 import type { Article } from '@/types';
 
 export async function OPTIONS(request: NextRequest) {
@@ -53,6 +52,29 @@ export async function GET(request: NextRequest) {
         return c && new Date(c) >= today;
       });
 
+      // Real view counts from views collection
+      let todayViews = 0;
+      let weekViews = 0;
+      let monthViews = 0;
+      try {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const weekStart = new Date(todayStart);
+        weekStart.setDate(weekStart.getDate() - 7);
+        const monthStart = new Date(todayStart);
+        monthStart.setDate(monthStart.getDate() - 30);
+
+        const viewsSnap = await adminDb.collection('views').get();
+        viewsSnap.docs.forEach((v) => {
+          const d = v.data().createdAt?.toDate?.() || new Date(v.data().createdAt);
+          if (d >= monthStart) monthViews++;
+          if (d >= weekStart) weekViews++;
+          if (d >= todayStart) todayViews++;
+        });
+      } catch (e) {
+        console.error('Error counting views:', e);
+      }
+
       return successResponse({
         stats: {
           totalArticles: allArticles.length,
@@ -60,9 +82,9 @@ export async function GET(request: NextRequest) {
           draftArticles: drafts.length,
           todayArticles: todayArticles.length,
           totalViews,
-          todayViews: Math.floor(Math.random() * 500) + 200,
-          weekViews: Math.floor(Math.random() * 3000) + 1000,
-          monthViews: Math.floor(Math.random() * 10000) + 5000,
+          todayViews,
+          weekViews,
+          monthViews,
         },
         recent,
         popular,
@@ -83,8 +105,7 @@ export async function GET(request: NextRequest) {
 
       const catRef = categoryId || category;
       if (catRef) {
-        const cat = DEFAULT_CATEGORIES.find((c) => c.id === catRef || c.slug === catRef);
-        if (cat) articles = articles.filter((a: Record<string, unknown>) => a.categoryId === cat.id);
+        articles = articles.filter((a: Record<string, unknown>) => a.categoryId === catRef || a.categorySlug === catRef);
       }
       if (exclude) articles = articles.filter((a) => a.id !== exclude);
       articles.sort((a: Record<string, unknown>, b: Record<string, unknown>) => ((b.publishedAt as string) || '').localeCompare((a.publishedAt as string) || ''));
@@ -153,8 +174,7 @@ export async function GET(request: NextRequest) {
 
       // Client-side filtering for category (by slug or id)
       if (category) {
-        const cat = DEFAULT_CATEGORIES.find((c) => c.slug === category || c.id === category);
-        if (cat) articles = articles.filter((a: Record<string, unknown>) => a.categoryId === cat.id);
+        articles = articles.filter((a: Record<string, unknown>) => a.categoryId === category || a.categorySlug === category);
       }
       if (categoryId) {
         articles = articles.filter((a: Record<string, unknown>) => a.categoryId === categoryId);

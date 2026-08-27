@@ -1,6 +1,5 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -13,68 +12,35 @@ import { NewsGrid } from '@/components/news/news-grid';
 import { NewsCard } from '@/components/news/news-card';
 import { NewsletterSection } from '@/components/news/newsletter-section';
 import { ChevronRight, TrendingUp, Newspaper, ArrowRight, Zap } from 'lucide-react';
+import { useRealtimeArticles, useRealtimeFeaturedArticles, useRealtimeCategories } from '@/hooks/use-realtime';
 import type { Article, Category } from '@/types';
 
 export default function HomePage() {
-  const [featuredArticle, setFeaturedArticle] = useState<Article | null>(null);
-  const [latestArticles, setLatestArticles] = useState<Article[]>([]);
-  const [popularArticles, setPopularArticles] = useState<Article[]>([]);
-  const [pilihanArticles, setPilihanArticles] = useState<Article[]>([]);
-  const [moreArticles, setMoreArticles] = useState<Article[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { articles: realtimeArticles, loading: articlesLoading } = useRealtimeArticles(13);
+  const { articles: featuredList, loading: featuredLoading } = useRealtimeFeaturedArticles();
+  const { categories, loading: catLoading } = useRealtimeCategories();
+  const loading = articlesLoading || featuredLoading || catLoading;
 
-  useEffect(() => {
-    async function fetchHomeData() {
-      setLoading(true);
-      try {
-        const [featuredRes, latestRes, categoriesRes] = await Promise.all([
-          fetch('/api/articles?featured=true&limit=1'),
-          fetch('/api/articles?limit=12'),
-          fetch('/api/categories'),
-        ]);
+  const featuredArticle = featuredList.length > 0
+    ? featuredList[0]
+    : realtimeArticles.length > 0
+      ? realtimeArticles[0]
+      : null;
 
-        const featuredData = featuredRes.ok ? await featuredRes.json() : { data: [] };
-        const latestData = latestRes.ok ? await latestRes.json() : { data: [] };
-        const categoriesData = categoriesRes.ok ? await categoriesRes.json() : { data: [] };
+  const latestArticles = realtimeArticles
+    .filter((a: Article) => a.id !== featuredArticle?.id)
+    .slice(0, 6);
 
-        const featured = (featuredData.data || featuredData || []).length > 0
-          ? (featuredData.data || featuredData)[0]
-          : (latestData.data || latestData || []).length > 0
-            ? (latestData.data || latestData)[0]
-            : null;
+  const popularArticles = [...(realtimeArticles)]
+    .sort((a: Article, b: Article) => (b.views || 0) - (a.views || 0))
+    .slice(0, 5);
 
-        const allLatest = latestData.data || latestData || [];
-        const latest = allLatest.filter((a: Article) => a.id !== featured?.id).slice(0, 6);
+  const pilihanArticles = realtimeArticles
+    .filter((a: Article) => a.featured || a.breaking)
+    .filter((a: Article) => a.id !== featuredArticle?.id)
+    .slice(0, 3);
 
-        // Popular articles sorted by views
-        const popular = [...(latestData.data || latestData || [])]
-          .sort((a: Article, b: Article) => (b.views || 0) - (a.views || 0))
-          .slice(0, 5);
-
-        // Featured/pilihan articles (breaking or featured)
-        const pilihan = allLatest
-          .filter((a: Article) => a.featured || a.breaking)
-          .filter((a: Article) => a.id !== featured?.id)
-          .slice(0, 3);
-
-        // More articles
-        const more = allLatest.slice(7, 13);
-
-        setFeaturedArticle(featured);
-        setLatestArticles(latest);
-        setPopularArticles(popular);
-        setPilihanArticles(pilihan);
-        setMoreArticles(more);
-        setCategories(categoriesData.data || categoriesData || []);
-      } catch {
-        // Silently fail
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchHomeData();
-  }, []);
+  const moreArticles = realtimeArticles.slice(7, 13);
 
   return (
     <>

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isFirebaseConfigured, handleCors, successResponse, errorResponse, getAuthUser, generateSlug } from '@/lib/api-helpers';
-import { DEFAULT_CATEGORIES } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
   const cors = handleCors(request);
@@ -19,11 +18,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    if (!isFirebaseConfigured()) {
-      const category = DEFAULT_CATEGORIES.find((c) => c.id === id);
-      if (!category) return errorResponse('Category not found', 404);
-      return successResponse(category);
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);
@@ -51,20 +46,7 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    if (!isFirebaseConfigured()) {
-      const index = DEFAULT_CATEGORIES.findIndex((c) => c.id === id);
-      if (index === -1) return errorResponse('Category not found', 404);
-
-      const existing = DEFAULT_CATEGORIES[index];
-      const updated = {
-        ...existing,
-        ...body,
-        slug: body.slug || (body.name ? generateSlug(body.name) : existing.slug),
-        updatedAt: new Date(),
-      };
-      DEFAULT_CATEGORIES[index] = updated;
-      return successResponse(updated);
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);
@@ -101,12 +83,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    if (!isFirebaseConfigured()) {
-      const index = DEFAULT_CATEGORIES.findIndex((c) => c.id === id);
-      if (index === -1) return errorResponse('Category not found', 404);
-      DEFAULT_CATEGORIES.splice(index, 1);
-      return successResponse({ deleted: true });
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);

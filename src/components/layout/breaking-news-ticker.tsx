@@ -4,11 +4,11 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useRealtimeBreakingNews } from '@/hooks/use-realtime';
 import type { Article } from '@/types';
 
 export function BreakingNewsTicker() {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { articles, loading } = useRealtimeBreakingNews();
   const [dismissed, setDismissed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -16,24 +16,7 @@ export function BreakingNewsTicker() {
     const isDismissed = sessionStorage.getItem('breaking-news-dismissed');
     if (isDismissed === 'true') {
       setDismissed(true);
-      return;
     }
-
-    async function fetchBreakingNews() {
-      try {
-        const res = await fetch('/api/articles?breaking=true&limit=5');
-        if (res.ok) {
-          const data = await res.json();
-          setArticles(data.data || data || []);
-        }
-      } catch {
-        // Silently fail - breaking news is non-critical
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchBreakingNews();
   }, []);
 
   const handleDismiss = useCallback(() => {

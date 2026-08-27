@@ -22,8 +22,7 @@ export async function DELETE(
     const { id } = await params;
 
     if (!isFirebaseConfigured()) {
-      // Demo mode - just return success
-      return successResponse({ deleted: true });
+      return errorResponse('Firebase not configured', 503);
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');

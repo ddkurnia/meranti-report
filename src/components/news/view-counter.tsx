@@ -6,10 +6,17 @@ import { formatNumber } from '@/lib/utils';
 
 interface ViewCounterProps {
   articleId: string;
+  initialViews?: number;
 }
 
-export function ViewCounter({ articleId }: ViewCounterProps) {
-  const [views, setViews] = useState<number | null>(null);
+export function ViewCounter({ articleId, initialViews }: ViewCounterProps) {
+  const [views, setViews] = useState<number | null>(initialViews ?? null);
+
+  useEffect(() => {
+    if (initialViews !== undefined) {
+      setViews(initialViews);
+    }
+  }, [initialViews]);
 
   useEffect(() => {
     async function fetchViews() {
@@ -24,6 +31,10 @@ export function ViewCounter({ articleId }: ViewCounterProps) {
       }
     }
     fetchViews();
+
+    // Poll for live view count updates every 30 seconds
+    const interval = setInterval(fetchViews, 30000);
+    return () => clearInterval(interval);
   }, [articleId]);
 
   return (
