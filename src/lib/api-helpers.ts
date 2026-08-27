@@ -1,12 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse, PaginatedResponse } from '@/types';
 
-// Check if Firebase Admin is configured
-export function isFirebaseAdminConfigured(): boolean {
-  return !!(
-    process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
-    process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-  );
+// Check if server-side Firebase (adminDb) is available for API routes
+export function isFirebaseConfigured(): boolean {
+  return false; // Server-side Firebase disabled - client SDK used directly from browser
+}
+
+// Check if client-side Firebase is configured (for components)
+export function isFirebaseClientConfigured(): boolean {
+  return !!(process.env.NEXT_PUBLIC_FIREBASE_API_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
 }
 
 // CORS headers
@@ -71,7 +73,25 @@ export function unauthorizedResponse(): NextResponse {
   );
 }
 
-// Verify auth from request (Authorization header)
+// Verify Firebase ID token via REST API (works without Admin SDK)
+async function verifyTokenRest(token: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${process.env.NEXT_PUBLIC_FIREBASE_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken: token }),
+      }
+    );
+    const data = await res.json();
+    return data.users?.[0]?.localId || null;
+  } catch {
+    return null;
+  }
+}
+
+// Verify auth from request
 export async function getAuthUser(request: NextRequest): Promise<string | null> {
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
@@ -79,33 +99,26 @@ export async function getAuthUser(request: NextRequest): Promise<string | null> 
   const token = authHeader.split('Bearer ')[1];
   if (!token) return null;
 
-  // If Firebase is configured, verify the token
-  if (isFirebaseAdminConfigured()) {
-    try {
-      const { adminAuth } = await import('@/lib/firebase/admin');
-      const decoded = await adminAuth.verifyIdToken(token);
-      return decoded.uid;
-    } catch {
-      return null;
-    }
+  if (isFirebaseConfigured()) {
+    const uid = await verifyTokenRest(token);
+    return uid;
   }
 
-  // In demo mode, accept any token that looks valid
+  // In demo mode, accept any token
   if (token.length > 10) return 'demo-user';
   return null;
 }
 
 // Get user role from Firestore
 export async function getUserRole(uid: string): Promise<string | null> {
-  if (!isFirebaseAdminConfigured()) {
-    // In demo mode, return super_admin
-    return 'super_admin';
-  }
+  if (!isFirebaseConfigured()) return 'super_admin'; // demo mode
   try {
     const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return 'super_admin'; // fallback to demo
     const userDoc = await adminDb.collection('users').doc(uid).get();
     if (!userDoc.exists) return null;
-    return userDoc.data()?.role || null;
+    const data = userDoc.data();
+    return (data as Record<string, unknown>)?.role as string || null;
   } catch {
     return null;
   }
@@ -135,16 +148,6 @@ export function toDate(value: unknown): Date | undefined {
   if (typeof value === 'string') return new Date(value);
   if (typeof value === 'number') return new Date(value);
   return undefined;
-}
-
-// Convert Firestore document to Article type
-export function formatDoc<T extends Record<string, unknown>>(doc: { id: string; data: () => Record<string, unknown> }): T & { id: string } {
-  const data = doc.data();
-  const result: Record<string, unknown> = { id: doc.id };
-  for (const [key, value] of Object.entries(data)) {
-    result[key] = value;
-  }
-  return result as T & { id: string };
 }
 
 // Generate slug from string

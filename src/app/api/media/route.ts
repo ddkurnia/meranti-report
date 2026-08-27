@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseAdminConfigured, handleCors, successResponse, errorResponse, paginatedResponse, parsePagination } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, successResponse, errorResponse, paginatedResponse, parsePagination } from '@/lib/api-helpers';
 
 export async function OPTIONS(request: NextRequest) {
   const cors = handleCors(request);
@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const { page, limit } = parsePagination(searchParams);
 
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       return paginatedResponse([], page, limit, 0);
     }
 

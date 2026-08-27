@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseAdminConfigured, handleCors, paginatedResponse, successResponse, errorResponse, parsePagination, getAuthUser, generateSlug } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, paginatedResponse, successResponse, errorResponse, parsePagination, getAuthUser, generateSlug } from '@/lib/api-helpers';
 import { DEMO_ARTICLES, DEMO_DASHBOARD_STATS, DEFAULT_CATEGORIES } from '@/lib/mock-data';
 import type { Article } from '@/types';
 
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
     // ============ DASHBOARD MODE ============
     if (dashboard) {
-      if (!isFirebaseAdminConfigured()) {
+      if (!isFirebaseConfigured()) {
         return successResponse({
           stats: DEMO_DASHBOARD_STATS,
           recent: DEMO_ARTICLES.slice(0, 5),
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     // ============ RELATED ARTICLES ============
     if (related) {
-      if (!isFirebaseAdminConfigured()) {
+      if (!isFirebaseConfigured()) {
         const catId = categoryId || category || '';
         let filtered = DEMO_ARTICLES.filter((a) => a.status === 'published');
         if (catId) {
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
 
     // ============ BREAKING NEWS ============
     if (breaking) {
-      if (!isFirebaseAdminConfigured()) {
+      if (!isFirebaseConfigured()) {
         const data = DEMO_ARTICLES.filter((a) => a.breaking && a.status === 'published');
         return successResponse(data);
       }
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
 
     // ============ FEATURED ARTICLES ============
     if (featured) {
-      if (!isFirebaseAdminConfigured()) {
+      if (!isFirebaseConfigured()) {
         const data = DEMO_ARTICLES.filter((a) => a.featured && a.status === 'published');
         return successResponse(data);
       }
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
     }
 
     // ============ FIREBASE MODE ============
-    if (isFirebaseAdminConfigured()) {
+    if (isFirebaseConfigured()) {
       const { adminDb } = await import('@/lib/firebase/admin');
 
       let query: any = adminDb.collection('articles').orderBy('publishedAt', 'desc');
@@ -256,7 +256,7 @@ export async function POST(request: NextRequest) {
   try {
     // Auth check
     const uid = await getAuthUser(request);
-    if (!uid && isFirebaseAdminConfigured()) {
+    if (!uid && isFirebaseConfigured()) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
       return errorResponse('Title, content, and categoryId are required', 400);
     }
 
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       // Demo mode - return mock created article
       const demoArticle: Article & { id: string } = {
         id: `article-demo-${Date.now()}`,
@@ -306,7 +306,6 @@ export async function POST(request: NextRequest) {
 
     // Firebase mode
     const { adminDb } = await import('@/lib/firebase/admin');
-    const { FieldValue } = await import('firebase-admin/firestore');
 
     const articleSlug = slug || generateSlug(title);
     const now = new Date();
@@ -326,8 +325,8 @@ export async function POST(request: NextRequest) {
       featured: featured || false,
       breaking: breaking || false,
       views: 0,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     if (subheading) articleData.subheading = subheading;
@@ -338,7 +337,7 @@ export async function POST(request: NextRequest) {
     if (seoDescription) articleData.seoDescription = seoDescription;
     if (seoKeywords) articleData.seoKeywords = seoKeywords;
     if (canonicalUrl) articleData.canonicalUrl = canonicalUrl;
-    if (status === 'published') articleData.publishedAt = FieldValue.serverTimestamp();
+    if (status === 'published') articleData.publishedAt = new Date().toISOString();
 
     const docRef = await adminDb.collection('articles').add(articleData);
     const createdArticle = { id: docRef.id, ...articleData };

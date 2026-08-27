@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseAdminConfigured, handleCors, successResponse, errorResponse, requireRole } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, successResponse, errorResponse, requireRole } from '@/lib/api-helpers';
 import { DEFAULT_SETTINGS } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   if (cors) return cors;
 
   try {
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       return successResponse(DEFAULT_SETTINGS);
     }
 
@@ -36,23 +36,22 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const { authorized, role } = await requireRole(request, ['super_admin']);
-    if (!authorized && isFirebaseAdminConfigured()) {
+    if (!authorized && isFirebaseConfigured()) {
       return NextResponse.json({ success: false, error: 'Unauthorized. Super admin only.' }, { status: 403 });
     }
 
     const body = await request.json();
 
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       return successResponse(body);
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
-    const { FieldValue } = await import('firebase-admin/firestore');
 
     await adminDb.collection('settings').doc('site').set(
       {
         ...body,
-        updatedAt: FieldValue.serverTimestamp(),
+        updatedAt: new Date().toISOString(),
       },
       { merge: true }
     );

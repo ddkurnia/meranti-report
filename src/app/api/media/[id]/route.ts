@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseAdminConfigured, handleCors, successResponse, errorResponse, getAuthUser, requireRole } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, successResponse, errorResponse, getAuthUser, requireRole } from '@/lib/api-helpers';
 import { deleteImage, extractPublicId } from '@/lib/cloudinary';
 
 export async function OPTIONS(request: NextRequest) {
@@ -15,13 +15,13 @@ export async function DELETE(
 ) {
   try {
     const { authorized } = await requireRole(request, ['super_admin', 'editor', 'author']);
-    if (!authorized && isFirebaseAdminConfigured()) {
+    if (!authorized && isFirebaseConfigured()) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
 
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       // Demo mode - just return success
       return successResponse({ deleted: true });
     }

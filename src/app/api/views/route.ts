@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseAdminConfigured, handleCors, successResponse, errorResponse } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, successResponse, errorResponse } from '@/lib/api-helpers';
 
 export async function OPTIONS(request: NextRequest) {
   const cors = handleCors(request);
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
     if (!articleId) return errorResponse('articleId is required', 400);
 
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       // Return a random view count for demo
       const count = Math.floor(Math.random() * 5000) + 100;
       return successResponse({ articleId, views: count });
@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
     if (!articleId) return errorResponse('articleId is required', 400);
     if (!sessionId) return errorResponse('sessionId is required', 400);
 
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       return successResponse({ recorded: true });
     }
 
@@ -77,16 +77,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Record the view
-    const { FieldValue } = await import('firebase-admin/firestore');
     await adminDb.collection('views').add({
       articleId,
       sessionId,
-      createdAt: FieldValue.serverTimestamp(),
+      createdAt: new Date().toISOString(),
     });
 
     // Also increment the view count on the article
+    const articleDoc = await adminDb.collection('articles').doc(articleId).get();
+    const currentViews = (articleDoc.data()?.views || 0) as number;
     await adminDb.collection('articles').doc(articleId).update({
-      views: FieldValue.increment(1),
+      views: currentViews + 1,
     });
 
     return successResponse({ recorded: true });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseAdminConfigured, handleCors, successResponse, errorResponse, getAuthUser, generateSlug } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, successResponse, errorResponse, getAuthUser, generateSlug } from '@/lib/api-helpers';
 import { DEFAULT_CATEGORIES } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
@@ -19,7 +19,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       const category = DEFAULT_CATEGORIES.find((c) => c.id === id);
       if (!category) return errorResponse('Category not found', 404);
       return successResponse(category);
@@ -43,14 +43,14 @@ export async function PUT(
 ) {
   try {
     const uid = await getAuthUser(request);
-    if (!uid && isFirebaseAdminConfigured()) {
+    if (!uid && isFirebaseConfigured()) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
     const body = await request.json();
 
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       const index = DEFAULT_CATEGORIES.findIndex((c) => c.id === id);
       if (index === -1) return errorResponse('Category not found', 404);
 
@@ -66,14 +66,13 @@ export async function PUT(
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
-    const { FieldValue } = await import('firebase-admin/firestore');
 
     const doc = await adminDb.collection('categories').doc(id).get();
     if (!doc.exists) return errorResponse('Category not found', 404);
 
     const updateData: Record<string, unknown> = {
       ...body,
-      updatedAt: FieldValue.serverTimestamp(),
+      updatedAt: new Date().toISOString(),
     };
     if (body.name) updateData.slug = body.slug || generateSlug(body.name);
 
@@ -94,13 +93,13 @@ export async function DELETE(
 ) {
   try {
     const uid = await getAuthUser(request);
-    if (!uid && isFirebaseAdminConfigured()) {
+    if (!uid && isFirebaseConfigured()) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
 
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       const index = DEFAULT_CATEGORIES.findIndex((c) => c.id === id);
       if (index === -1) return errorResponse('Category not found', 404);
       DEFAULT_CATEGORIES.splice(index, 1);

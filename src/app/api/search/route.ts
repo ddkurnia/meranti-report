@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseAdminConfigured, handleCors, paginatedResponse, errorResponse, parsePagination } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, paginatedResponse, errorResponse, parsePagination } from '@/lib/api-helpers';
 import { DEMO_ARTICLES } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
     const q = query.toLowerCase();
 
     // DEMO MODE
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       let results = DEMO_ARTICLES.filter((a) => a.status === 'published');
 
       // Text search

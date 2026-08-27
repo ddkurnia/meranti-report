@@ -1,18 +1,6 @@
-import { initializeApp, getApps, cert, getApp } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getAuth } from 'firebase-admin/auth';
+// Server-side Firebase placeholder
+// Firebase Client SDK doesn't work well in Node.js server context.
+// API routes use mock data as fallback. Client components use Firebase directly.
 
-const serviceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_KEY
-  ? JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_KEY)
-  : undefined;
-
-const adminApp = getApps().length === 0
-  ? initializeApp({
-      credential: serviceAccount ? cert(serviceAccount) : undefined,
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    }, 'admin')
-  : getApp('admin');
-
-export const adminDb = getFirestore(adminApp);
-export const adminAuth = getAuth(adminApp);
-export default adminApp;
+export const adminDb = null;
+export const isFirebaseAdminConfigured = () => false;

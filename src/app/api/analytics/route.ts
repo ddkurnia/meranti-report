@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseAdminConfigured, handleCors, successResponse, errorResponse } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, successResponse, errorResponse } from '@/lib/api-helpers';
 import { DEMO_ARTICLES, DEFAULT_CATEGORIES } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const period = searchParams.get('period') || '30'; // days
 
     // DEMO MODE
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       const days = parseInt(period, 10);
       const dailyViews = Array.from({ length: days }, (_, i) => ({
         date: new Date(Date.now() - (days - 1 - i) * 86400000).toISOString().split('T')[0],

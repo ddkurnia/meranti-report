@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseAdminConfigured, handleCors, successResponse, errorResponse, getAuthUser, generateSlug } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, successResponse, errorResponse, getAuthUser, generateSlug } from '@/lib/api-helpers';
 import { DEFAULT_CATEGORIES } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   if (cors) return cors;
 
   try {
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       return successResponse(DEFAULT_CATEGORIES);
     }
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const uid = await getAuthUser(request);
-    if (!uid && isFirebaseAdminConfigured()) {
+    if (!uid && isFirebaseConfigured()) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     const categorySlug = slug || generateSlug(name);
 
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       const newCategory = {
         id: `cat-${Date.now()}`,
         name,
@@ -59,7 +59,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
-    const { FieldValue } = await import('firebase-admin/firestore');
 
     const categoryData = {
       name,
@@ -68,8 +67,8 @@ export async function POST(request: NextRequest) {
       parentId: parentId || null,
       order: order || 0,
       articleCount: 0,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     const docRef = await adminDb.collection('categories').add(categoryData);

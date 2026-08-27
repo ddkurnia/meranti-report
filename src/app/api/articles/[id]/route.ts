@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseAdminConfigured, handleCors, successResponse, errorResponse, getAuthUser, generateSlug, requireRole } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, successResponse, errorResponse, getAuthUser, generateSlug, requireRole } from '@/lib/api-helpers';
 import { DEMO_ARTICLES } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
@@ -20,7 +20,7 @@ export async function GET(
     const { id } = await params;
 
     // DEMO MODE
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       const article = DEMO_ARTICLES.find((a) => a.id === id);
       if (!article) return errorResponse('Article not found', 404);
 
@@ -31,7 +31,6 @@ export async function GET(
 
     // FIREBASE MODE
     const { adminDb } = await import('@/lib/firebase/admin');
-    const { FieldValue } = await import('firebase-admin/firestore');
 
     const doc = await adminDb.collection('articles').doc(id).get();
     if (!doc.exists) return errorResponse('Article not found', 404);
@@ -45,11 +44,12 @@ export async function GET(
     }
 
     // Increment views
+    const newViewCount = (articleData.views || 0) + 1;
     await adminDb.collection('articles').doc(id).update({
-      views: FieldValue.increment(1),
+      views: newViewCount,
     });
 
-    return successResponse({ ...articleData, views: (articleData.views || 0) + 1 });
+    return successResponse({ ...articleData, views: newViewCount });
   } catch (error) {
     console.error('Error fetching article:', error);
     return errorResponse('Failed to fetch article');
@@ -63,7 +63,7 @@ export async function PUT(
 ) {
   try {
     const uid = await getAuthUser(request);
-    if (!uid && isFirebaseAdminConfigured()) {
+    if (!uid && isFirebaseConfigured()) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -71,7 +71,7 @@ export async function PUT(
     const body = await request.json();
 
     // DEMO MODE
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       const articleIndex = DEMO_ARTICLES.findIndex((a) => a.id === id);
       if (articleIndex === -1) return errorResponse('Article not found', 404);
 
@@ -93,7 +93,6 @@ export async function PUT(
 
     // FIREBASE MODE
     const { adminDb } = await import('@/lib/firebase/admin');
-    const { FieldValue } = await import('firebase-admin/firestore');
 
     const doc = await adminDb.collection('articles').doc(id).get();
     if (!doc.exists) return errorResponse('Article not found', 404);
@@ -104,12 +103,12 @@ export async function PUT(
 
     const updateData: Record<string, unknown> = {
       ...body,
-      updatedAt: FieldValue.serverTimestamp(),
+      updatedAt: new Date().toISOString(),
     };
 
     if (body.title) updateData.slug = body.slug || generateSlug(body.title);
     if (!wasPublished && isNowPublished) {
-      updateData.publishedAt = FieldValue.serverTimestamp();
+      updateData.publishedAt = new Date().toISOString();
     }
 
     await adminDb.collection('articles').doc(id).update(updateData);
@@ -129,14 +128,14 @@ export async function DELETE(
 ) {
   try {
     const { authorized } = await requireRole(request, ['super_admin', 'editor']);
-    if (!authorized && isFirebaseAdminConfigured()) {
+    if (!authorized && isFirebaseConfigured()) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
     const { id } = await params;
 
     // DEMO MODE
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       const index = DEMO_ARTICLES.findIndex((a) => a.id === id);
       if (index === -1) return errorResponse('Article not found', 404);
       DEMO_ARTICLES.splice(index, 1);

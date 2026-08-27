@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseAdminConfigured, handleCors, successResponse, errorResponse, getAuthUser, generateSlug } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, successResponse, errorResponse, getAuthUser, generateSlug } from '@/lib/api-helpers';
 import { DEMO_AUTHORS } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
   if (cors) return cors;
 
   try {
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       return successResponse(DEMO_AUTHORS);
     }
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const uid = await getAuthUser(request);
-    if (!uid && isFirebaseAdminConfigured()) {
+    if (!uid && isFirebaseConfigured()) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
     const authorSlug = slug || generateSlug(name);
 
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       const newAuthor = {
         id: `author-${Date.now()}`,
         name,
@@ -61,7 +61,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
-    const { FieldValue } = await import('firebase-admin/firestore');
 
     const authorData = {
       name,
@@ -72,8 +71,8 @@ export async function POST(request: NextRequest) {
       facebook: facebook || null,
       instagram: instagram || null,
       twitter: twitter || null,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     const docRef = await adminDb.collection('authors').add(authorData);

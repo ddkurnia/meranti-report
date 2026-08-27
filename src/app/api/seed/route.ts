@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseAdminConfigured, handleCors, successResponse, errorResponse, getAuthUser } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, successResponse, errorResponse, getAuthUser } from '@/lib/api-helpers';
 import { DEFAULT_CATEGORIES, DEMO_ARTICLES, DEMO_AUTHORS, DEFAULT_SETTINGS, DEMO_COMMENTS } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // If Firebase is not configured, just return success
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       return successResponse({
         message: 'Demo mode active - mock data is served directly from mock-data.ts',
         seeded: {
@@ -44,16 +44,17 @@ export async function POST(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
-    const { FieldValue } = await import('firebase-admin/firestore');
     const batch = adminDb.batch();
+
+    const now = new Date().toISOString();
 
     // Seed categories
     for (const cat of DEFAULT_CATEGORIES) {
       const docRef = adminDb.collection('categories').doc(cat.id);
       batch.set(docRef, {
         ...cat,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
+        createdAt: now,
+        updatedAt: now,
       });
     }
 
@@ -62,8 +63,8 @@ export async function POST(request: NextRequest) {
       const docRef = adminDb.collection('authors').doc(author.id);
       batch.set(docRef, {
         ...author,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
+        createdAt: now,
+        updatedAt: now,
       });
     }
 
@@ -72,9 +73,9 @@ export async function POST(request: NextRequest) {
       const docRef = adminDb.collection('articles').doc(article.id);
       batch.set(docRef, {
         ...article,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-        publishedAt: article.publishedAt ? FieldValue.serverTimestamp() : null,
+        createdAt: now,
+        updatedAt: now,
+        publishedAt: article.publishedAt ? now : null,
       });
     }
 
@@ -83,8 +84,8 @@ export async function POST(request: NextRequest) {
       const docRef = adminDb.collection('comments').doc(comment.id);
       batch.set(docRef, {
         ...comment,
-        createdAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
+        createdAt: now,
+        updatedAt: now,
       });
     }
 
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
     const settingsRef = adminDb.collection('settings').doc('site');
     batch.set(settingsRef, {
       ...DEFAULT_SETTINGS,
-      updatedAt: FieldValue.serverTimestamp(),
+      updatedAt: now,
     });
 
     await batch.commit();

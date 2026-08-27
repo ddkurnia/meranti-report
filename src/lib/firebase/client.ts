@@ -27,12 +27,11 @@ if (isConfigured) {
   auth = getAuth(app);
   db = getFirestore(app);
 } else {
-  // Create stub objects for development without Firebase
+  // Stub objects for development without Firebase
   app = null as unknown as FirebaseApp;
   auth = null as unknown as Auth;
   db = null as unknown as Firestore;
 }
 
-export { app, auth, db };
-export { isConfigured as isFirebaseConfigured };
+export { app, auth, db, adminDb, isFirebaseConfigured };
 export default app;

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseAdminConfigured, handleCors, successResponse, errorResponse, paginatedResponse, getAuthUser, requireRole, parsePagination } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, successResponse, errorResponse, paginatedResponse, getAuthUser, requireRole, parsePagination } from '@/lib/api-helpers';
 import { DEMO_COMMENTS } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const { page, limit } = parsePagination(searchParams);
 
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       let filtered = [...DEMO_COMMENTS];
       if (articleId) filtered = filtered.filter((c) => c.articleId === articleId);
       if (status) filtered = filtered.filter((c) => c.status === status);
@@ -57,21 +57,20 @@ export async function POST(request: NextRequest) {
     // If commentId is provided, this is an admin update (change status)
     if (commentId && status) {
       const { authorized } = await requireRole(request, ['super_admin', 'editor']);
-      if (!authorized && isFirebaseAdminConfigured()) {
+      if (!authorized && isFirebaseConfigured()) {
         return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
       }
 
-      if (!isFirebaseAdminConfigured()) {
+      if (!isFirebaseConfigured()) {
         const comment = DEMO_COMMENTS.find((c) => c.id === commentId);
         if (comment) comment.status = status;
         return successResponse(comment || { id: commentId, status });
       }
 
       const { adminDb } = await import('@/lib/firebase/admin');
-      const { FieldValue } = await import('firebase-admin/firestore');
       await adminDb.collection('comments').doc(commentId).update({
         status,
-        updatedAt: FieldValue.serverTimestamp(),
+        updatedAt: new Date().toISOString(),
       });
       return successResponse({ id: commentId, status });
     }
@@ -81,7 +80,7 @@ export async function POST(request: NextRequest) {
       return errorResponse('articleId, authorName, and content are required', 400);
     }
 
-    if (!isFirebaseAdminConfigured()) {
+    if (!isFirebaseConfigured()) {
       const newComment = {
         id: `comment-${Date.now()}`,
         articleId,
@@ -97,7 +96,6 @@ export async function POST(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');
-    const { FieldValue } = await import('firebase-admin/firestore');
 
     // Check if comments require approval
     let autoApprove = true;
@@ -118,8 +116,8 @@ export async function POST(request: NextRequest) {
       content,
       status: autoApprove ? 'approved' : 'pending',
       parentId: parentId || null,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     };
 
     const docRef = await adminDb.collection('comments').add(commentData);
