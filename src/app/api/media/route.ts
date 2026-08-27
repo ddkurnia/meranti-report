@@ -16,9 +16,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const { page, limit } = parsePagination(searchParams);
 
-    if (!isFirebaseConfigured()) {
-      return paginatedResponse([], page, limit, 0);
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);

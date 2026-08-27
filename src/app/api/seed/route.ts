@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseConfigured, handleCors, successResponse, errorResponse, getAuthUser } from '@/lib/api-helpers';
+import { handleCors, successResponse, errorResponse, getAuthUser } from '@/lib/api-helpers';
 import { DEFAULT_CATEGORIES, DEMO_ARTICLES, DEMO_AUTHORS, DEFAULT_SETTINGS, DEMO_COMMENTS } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
@@ -18,20 +18,6 @@ export async function POST(request: NextRequest) {
 
     if (!uid && seedKey !== 'meranti-seed-2025') {
       return errorResponse('Unauthorized. Provide auth token or seedKey.', 401);
-    }
-
-    // If Firebase is not configured, just return success
-    if (!isFirebaseConfigured()) {
-      return successResponse({
-        message: 'Demo mode active - mock data is served directly from mock-data.ts',
-        seeded: {
-          categories: DEFAULT_CATEGORIES.length,
-          articles: DEMO_ARTICLES.length,
-          authors: DEMO_AUTHORS.length,
-          comments: DEMO_COMMENTS.length,
-          settings: 1,
-        },
-      });
     }
 
     const { adminDb } = await import('@/lib/firebase/admin');

@@ -14,9 +14,7 @@ export async function GET(request: NextRequest) {
   if (cors) return cors;
 
   try {
-    if (!isFirebaseConfigured()) {
-      return successResponse(DEFAULT_SETTINGS);
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);
@@ -43,9 +41,7 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
 
-    if (!isFirebaseConfigured()) {
-      return successResponse(body);
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);

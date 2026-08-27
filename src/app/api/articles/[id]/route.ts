@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isFirebaseConfigured, handleCors, successResponse, errorResponse, getAuthUser, generateSlug, requireRole } from '@/lib/api-helpers';
-import { DEMO_ARTICLES } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
   const cors = handleCors(request);
@@ -19,15 +18,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // DEMO MODE
-    if (!isFirebaseConfigured()) {
-      const article = DEMO_ARTICLES.find((a) => a.id === id);
-      if (!article) return errorResponse('Article not found', 404);
-
-      // Increment views in demo mode (just return the article, we can't persist)
-      const updatedArticle = { ...article, views: article.views + 1 };
-      return successResponse(updatedArticle);
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     // FIREBASE MODE
     const { adminDb } = await import('@/lib/firebase/admin');
@@ -71,26 +62,7 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    // DEMO MODE
-    if (!isFirebaseConfigured()) {
-      const articleIndex = DEMO_ARTICLES.findIndex((a) => a.id === id);
-      if (articleIndex === -1) return errorResponse('Article not found', 404);
-
-      const existing = DEMO_ARTICLES[articleIndex];
-      const wasPublished = existing.status === 'published';
-      const isNowPublished = body.status === 'published';
-
-      const updated = {
-        ...existing,
-        ...body,
-        slug: body.slug || (body.title ? generateSlug(body.title) : existing.slug),
-        updatedAt: new Date(),
-        publishedAt: (!wasPublished && isNowPublished) ? new Date() : existing.publishedAt,
-      };
-
-      DEMO_ARTICLES[articleIndex] = updated;
-      return successResponse(updated);
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     // FIREBASE MODE
     const { adminDb } = await import('@/lib/firebase/admin');
@@ -136,13 +108,7 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // DEMO MODE
-    if (!isFirebaseConfigured()) {
-      const index = DEMO_ARTICLES.findIndex((a) => a.id === id);
-      if (index === -1) return errorResponse('Article not found', 404);
-      DEMO_ARTICLES.splice(index, 1);
-      return successResponse({ deleted: true });
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     // FIREBASE MODE
     const { adminDb } = await import('@/lib/firebase/admin');

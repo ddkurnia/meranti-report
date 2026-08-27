@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isFirebaseConfigured, handleCors, successResponse, errorResponse, paginatedResponse, getAuthUser, requireRole, parsePagination } from '@/lib/api-helpers';
-import { DEMO_COMMENTS } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
   const cors = handleCors(request);
@@ -19,15 +18,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const { page, limit } = parsePagination(searchParams);
 
-    if (!isFirebaseConfigured()) {
-      let filtered = [...DEMO_COMMENTS];
-      if (articleId) filtered = filtered.filter((c) => c.articleId === articleId);
-      if (status) filtered = filtered.filter((c) => c.status === status);
-      else filtered = filtered.filter((c) => c.status === 'approved'); // Only show approved by default
-      const total = filtered.length;
-      const start = (page - 1) * limit;
-      return paginatedResponse(filtered.slice(start, start + limit), page, limit, total);
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);
@@ -62,11 +53,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
       }
 
-      if (!isFirebaseConfigured()) {
-        const comment = DEMO_COMMENTS.find((c) => c.id === commentId);
-        if (comment) comment.status = status;
-        return successResponse(comment || { id: commentId, status });
-      }
+      if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
       const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);
@@ -82,20 +69,7 @@ export async function POST(request: NextRequest) {
       return errorResponse('articleId, authorName, and content are required', 400);
     }
 
-    if (!isFirebaseConfigured()) {
-      const newComment = {
-        id: `comment-${Date.now()}`,
-        articleId,
-        authorName,
-        authorEmail: authorEmail || undefined,
-        content,
-        status: 'pending' as const,
-        parentId: parentId || undefined,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      return NextResponse.json({ success: true, data: newComment }, { status: 201 });
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);

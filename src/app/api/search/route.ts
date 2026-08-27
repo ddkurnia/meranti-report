@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isFirebaseConfigured, handleCors, paginatedResponse, errorResponse, parsePagination } from '@/lib/api-helpers';
-import { DEMO_ARTICLES } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
   const cors = handleCors(request);
@@ -24,35 +23,7 @@ export async function GET(request: NextRequest) {
 
     const q = query.toLowerCase();
 
-    // DEMO MODE
-    if (!isFirebaseConfigured()) {
-      let results = DEMO_ARTICLES.filter((a) => a.status === 'published');
-
-      // Text search
-      results = results.filter(
-        (a) =>
-          a.title.toLowerCase().includes(q) ||
-          a.excerpt.toLowerCase().includes(q) ||
-          a.content.toLowerCase().includes(q) ||
-          a.tags.some((t) => t.toLowerCase().includes(q))
-      );
-
-      // Filter by category
-      if (category) {
-        results = results.filter((a) => a.categorySlug === category || a.categoryId === category);
-      }
-
-      // Filter by tag
-      if (tag) {
-        results = results.filter((a) => a.tags.some((t) => t.toLowerCase().includes(tag.toLowerCase())));
-      }
-
-      const total = results.length;
-      const start = (page - 1) * limit;
-      const paginated = results.slice(start, start + limit);
-
-      return paginatedResponse(paginated, page, limit, total);
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     // FIREBASE MODE
     const { adminDb } = await import('@/lib/firebase/admin');

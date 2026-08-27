@@ -97,22 +97,15 @@ export async function getAuthUser(request: NextRequest): Promise<string | null> 
   const token = authHeader.split('Bearer ')[1];
   if (!token) return null;
 
-  if (isFirebaseConfigured()) {
-    const uid = await verifyIdToken(token);
-    return uid;
-  }
-
-  // In demo mode, accept any token
-  if (token.length > 10) return 'demo-user';
-  return null;
+  const uid = await verifyIdToken(token);
+  return uid;
 }
 
 // Get user role from Firestore
 export async function getUserRole(uid: string): Promise<string | null> {
-  if (!isFirebaseConfigured()) return 'super_admin'; // demo mode
   try {
     const { adminDb } = await import('@/lib/firebase/admin');
-    if (!adminDb) return 'super_admin'; // fallback to demo
+    if (!adminDb) return null;
     const userDoc = await adminDb.collection('users').doc(uid).get();
     if (!userDoc.exists) return null;
     const data = userDoc.data();

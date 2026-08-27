@@ -18,11 +18,7 @@ export async function GET(request: NextRequest) {
 
     if (!articleId) return errorResponse('articleId is required', 400);
 
-    if (!isFirebaseConfigured()) {
-      // Return a random view count for demo
-      const count = Math.floor(Math.random() * 5000) + 100;
-      return successResponse({ articleId, views: count });
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);
@@ -48,9 +44,7 @@ export async function POST(request: NextRequest) {
     if (!articleId) return errorResponse('articleId is required', 400);
     if (!sessionId) return errorResponse('sessionId is required', 400);
 
-    if (!isFirebaseConfigured()) {
-      return successResponse({ recorded: true });
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);

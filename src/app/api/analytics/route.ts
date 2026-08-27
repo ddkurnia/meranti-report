@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isFirebaseConfigured, handleCors, successResponse, errorResponse } from '@/lib/api-helpers';
-import { DEMO_ARTICLES, DEFAULT_CATEGORIES } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
   const cors = handleCors(request);
@@ -17,59 +16,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || '30'; // days
 
-    // DEMO MODE
-    if (!isFirebaseConfigured()) {
-      const days = parseInt(period, 10);
-      const dailyViews = Array.from({ length: days }, (_, i) => ({
-        date: new Date(Date.now() - (days - 1 - i) * 86400000).toISOString().split('T')[0],
-        views: Math.floor(Math.random() * 800) + 200,
-      }));
-
-      const todayViews = dailyViews[dailyViews.length - 1].views;
-      const weekViews = dailyViews.slice(-7).reduce((sum, d) => sum + d.views, 0);
-      const monthViews = dailyViews.reduce((sum, d) => sum + d.views, 0);
-
-      const popularArticles = [...DEMO_ARTICLES]
-        .sort((a, b) => b.views - a.views)
-        .slice(0, 10)
-        .map((a) => ({
-          id: a.id,
-          title: a.title,
-          slug: a.slug,
-          views: a.views,
-          categoryName: a.categoryName,
-          publishedAt: a.publishedAt,
-        }));
-
-      // Count articles per category
-      const categoryCount: Record<string, { name: string; slug: string; count: number }> = {};
-      DEMO_ARTICLES.forEach((a) => {
-        if (!categoryCount[a.categoryId]) {
-          categoryCount[a.categoryId] = {
-            name: a.categoryName,
-            slug: a.categorySlug,
-            count: 0,
-          };
-        }
-        categoryCount[a.categoryId].count++;
-      });
-
-      const popularCategories = Object.values(categoryCount)
-        .sort((a, b) => b.count - a.count);
-
-      return successResponse({
-        views: {
-          today: todayViews,
-          week: weekViews,
-          month: monthViews,
-          daily: dailyViews,
-        },
-        popularArticles,
-        popularCategories,
-        totalArticles: DEMO_ARTICLES.length,
-        totalAuthors: 3,
-      });
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     // FIREBASE MODE
     const { adminDb } = await import('@/lib/firebase/admin');

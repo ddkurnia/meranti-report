@@ -31,11 +31,7 @@ export async function GET(request: NextRequest) {
     // ============ DASHBOARD MODE ============
     if (dashboard) {
       if (!isFirebaseConfigured()) {
-        return successResponse({
-          stats: DEMO_DASHBOARD_STATS,
-          recent: DEMO_ARTICLES.slice(0, 5),
-          popular: [...DEMO_ARTICLES].sort((a, b) => b.views - a.views).slice(0, 5),
-        });
+        return errorResponse('Firebase not configured', 503);
       }
 
       const { adminDb } = await import('@/lib/firebase/admin');
@@ -76,14 +72,7 @@ export async function GET(request: NextRequest) {
     // ============ RELATED ARTICLES ============
     if (related) {
       if (!isFirebaseConfigured()) {
-        const catId = categoryId || category || '';
-        let filtered = DEMO_ARTICLES.filter((a) => a.status === 'published');
-        if (catId) {
-          const cat = DEFAULT_CATEGORIES.find((c) => c.id === catId || c.slug === catId);
-          if (cat) filtered = filtered.filter((a) => a.categoryId === cat.id);
-        }
-        if (exclude) filtered = filtered.filter((a) => a.id !== exclude);
-        return successResponse(filtered.slice(0, 6));
+        return errorResponse('Firebase not configured', 503);
       }
 
       const { adminDb } = await import('@/lib/firebase/admin');
@@ -106,8 +95,7 @@ export async function GET(request: NextRequest) {
     // ============ BREAKING NEWS ============
     if (breaking) {
       if (!isFirebaseConfigured()) {
-        const data = DEMO_ARTICLES.filter((a) => a.breaking && a.status === 'published');
-        return successResponse(data);
+        return errorResponse('Firebase not configured', 503);
       }
 
       const { adminDb } = await import('@/lib/firebase/admin');
@@ -123,8 +111,7 @@ export async function GET(request: NextRequest) {
     // ============ FEATURED ARTICLES ============
     if (featured) {
       if (!isFirebaseConfigured()) {
-        const data = DEMO_ARTICLES.filter((a) => a.featured && a.status === 'published');
-        return successResponse(data);
+        return errorResponse('Firebase not configured', 503);
       }
 
       const { adminDb } = await import('@/lib/firebase/admin');
@@ -211,44 +198,8 @@ export async function GET(request: NextRequest) {
       return paginatedResponse(paginated, page, limit, total);
     }
 
-    // ============ DEMO / FALLBACK MODE ============
-    let filtered = [...DEMO_ARTICLES].filter((a) => a.status === 'published');
-
-    // Filter by status only for auth requests (demo mode accepts all)
-    // In demo mode, we don't have real auth, so just show published
-
-    if (category) {
-      const cat = DEFAULT_CATEGORIES.find((c) => c.slug === category || c.id === category);
-      if (cat) filtered = filtered.filter((a) => a.categoryId === cat.id);
-    }
-    if (categoryId) {
-      const cat = DEFAULT_CATEGORIES.find((c) => c.id === categoryId);
-      if (cat) filtered = filtered.filter((a) => a.categoryId === cat.id);
-    }
-    if (tag) {
-      filtered = filtered.filter((a) => a.tags.some((t) => t.toLowerCase().includes(tag.toLowerCase())));
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      filtered = filtered.filter(
-        (a) =>
-          a.title.toLowerCase().includes(q) ||
-          a.excerpt.toLowerCase().includes(q) ||
-          a.content.toLowerCase().includes(q)
-      );
-    }
-    if (exclude) {
-      filtered = filtered.filter((a) => a.id !== exclude);
-    }
-
-    // Sort by publishedAt desc
-    filtered.sort((a, b) => new Date(b.publishedAt || 0).getTime() - new Date(a.publishedAt || 0).getTime());
-
-    const total = filtered.length;
-    const start = (page - 1) * limit;
-    const paginated = filtered.slice(start, start + limit);
-
-    return paginatedResponse(paginated, page, limit, total);
+    // Firebase not configured - return error
+    return errorResponse('Firebase not configured', 503);
   } catch (error) {
     console.error('Error fetching articles:', error);
     return errorResponse('Failed to fetch articles');
@@ -276,36 +227,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isFirebaseConfigured()) {
-      // Demo mode - return mock created article
-      const demoArticle: Article & { id: string } = {
-        id: `article-demo-${Date.now()}`,
-        title,
-        slug: slug || generateSlug(title),
-        subheading: subheading || undefined,
-        excerpt: excerpt || '',
-        content,
-        featuredImage: featuredImage || undefined,
-        imageCaption: imageCaption || undefined,
-        categoryId,
-        categoryName: categoryName || 'Demo Category',
-        categorySlug: categorySlug || 'demo-category',
-        authorId: authorId || 'author-1',
-        authorName: authorName || 'Demo Author',
-        authorPhoto: authorPhoto || undefined,
-        tags: tags || [],
-        status: status || 'draft',
-        featured: featured || false,
-        breaking: breaking || false,
-        views: 0,
-        seoTitle: seoTitle || undefined,
-        seoDescription: seoDescription || undefined,
-        seoKeywords: seoKeywords || undefined,
-        canonicalUrl: canonicalUrl || undefined,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        publishedAt: status === 'published' ? new Date() : undefined,
-      };
-      return NextResponse.json({ success: true, data: demoArticle }, { status: 201 });
+      return errorResponse('Firebase not configured', 503);
     }
 
     // Firebase mode

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isFirebaseConfigured, handleCors, successResponse, errorResponse, getAuthUser, generateSlug } from '@/lib/api-helpers';
-import { DEMO_AUTHORS } from '@/lib/mock-data';
 
 export async function OPTIONS(request: NextRequest) {
   const cors = handleCors(request);
@@ -14,9 +13,7 @@ export async function GET(request: NextRequest) {
   if (cors) return cors;
 
   try {
-    if (!isFirebaseConfigured()) {
-      return successResponse(DEMO_AUTHORS);
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);
@@ -44,22 +41,7 @@ export async function POST(request: NextRequest) {
 
     const authorSlug = slug || generateSlug(name);
 
-    if (!isFirebaseConfigured()) {
-      const newAuthor = {
-        id: `author-${Date.now()}`,
-        name,
-        slug: authorSlug,
-        photo: photo || undefined,
-        bio: bio || undefined,
-        position: position || undefined,
-        facebook: facebook || undefined,
-        instagram: instagram || undefined,
-        twitter: twitter || undefined,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      return NextResponse.json({ success: true, data: newAuthor }, { status: 201 });
-    }
+    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);

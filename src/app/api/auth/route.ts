@@ -22,16 +22,9 @@ export async function GET(request: NextRequest) {
     const token = authHeader.split('Bearer ')[1];
     if (!token) return successResponse(null);
 
-    // Check if Firebase Admin is configured
+    // Firebase must be configured for auth
     if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || !process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
-      // Demo mode: return a demo user
-      return successResponse({
-        uid: 'demo-user',
-        email: 'admin@merantireport.id',
-        displayName: 'Admin Meranti',
-        role: 'super_admin',
-        isDemo: true,
-      });
+      return successResponse(null);
     }
 
     // Firebase mode: verify token
