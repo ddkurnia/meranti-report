@@ -27,9 +27,13 @@ export default function HomePage() {
       ? realtimeArticles[0]
       : null;
 
-  const latestArticles = realtimeArticles
-    .filter((a: Article) => a.id !== featuredArticle?.id)
-    .slice(0, 6);
+  // When there are few articles, include the featured article in the grid too
+  // so sections don't appear empty
+  const hasManyArticles = realtimeArticles.length > 7;
+
+  const latestArticles = hasManyArticles
+    ? realtimeArticles.filter((a: Article) => a.id !== featuredArticle?.id).slice(0, 6)
+    : realtimeArticles.slice(0, 6);
 
   const popularArticles = [...(realtimeArticles)]
     .sort((a: Article, b: Article) => (b.views || 0) - (a.views || 0))
@@ -37,10 +41,10 @@ export default function HomePage() {
 
   const pilihanArticles = realtimeArticles
     .filter((a: Article) => a.featured || a.breaking)
-    .filter((a: Article) => a.id !== featuredArticle?.id)
+    .filter((a: Article) => hasManyArticles ? a.id !== featuredArticle?.id : true)
     .slice(0, 3);
 
-  const moreArticles = realtimeArticles.slice(7, 13);
+  const moreArticles = hasManyArticles ? realtimeArticles.slice(7, 13) : [];
 
   return (
     <>
