@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/hooks/use-auth';
 import { useRealtimeAllAds } from '@/hooks/use-realtime';
 import type { AdSlot } from '@/types';
@@ -47,7 +47,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export default function IklanPage() {
-  const { user, fetchWithAuth } = useAuth();
+  const { fetchWithAuth } = useAuth();
   const { ads, loading } = useRealtimeAllAds();
   const [editingSlot, setEditingSlot] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -77,22 +77,28 @@ export default function IklanPage() {
   const handleUpload = useCallback(async (file: File) => {
     setUploading(true);
     try {
+      // Upload langsung ke Cloudinary dari client (seperti halaman Media)
+      const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'tsgloc4b';
+      const UPLOAD_PRESET = 'merantireport';
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetchWithAuth('/api/ads', {
-        method: 'POST',
-        body: formData,
-      });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Upload gagal');
-      setEditData((prev) => ({ ...prev, imageUrl: json.data.imageUrl }));
+      formData.append('upload_preset', UPLOAD_PRESET);
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+        { method: 'POST', body: formData }
+      );
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error?.message || 'Upload gagal');
+      setEditData((prev) => ({ ...prev, imageUrl: data.secure_url }));
       toast.success('Gambar berhasil diupload');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Upload gagal');
     } finally {
       setUploading(false);
     }
-  }, [fetchWithAuth]);
+  }, []);
 
   const handleSave = async (ad: AdSlot) => {
     setSaving(true);
