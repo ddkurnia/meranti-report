@@ -151,20 +151,12 @@ export function Header() {
       <div className="bg-[#1a2332] backdrop-blur-md bg-opacity-95 border-b border-white/10">
         <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 shrink-0">
+          <Link href="/" className="shrink-0">
             <img
               src="/logo.png"
               alt="Meranti Report"
-              className="h-8 md:h-10 w-auto rounded-sm"
+              className="h-8 md:h-10 w-auto object-contain"
             />
-            <div className="flex flex-col leading-none">
-              <span className="text-lg md:text-xl font-bold tracking-wider text-white uppercase">
-                Meranti
-              </span>
-              <span className="text-[10px] md:text-xs font-light tracking-widest text-gray-400 uppercase">
-                Report
-              </span>
-            </div>
           </Link>
 
           {/* Desktop navigation */}
@@ -269,16 +261,12 @@ export function Header() {
               <SheetContent side="left" className="w-80 bg-[#1a2332] border-white/10 p-0">
                 <SheetHeader className="p-4 pb-0">
                   <SheetTitle className="text-white">
-                    <Link href="/" className="flex items-center gap-2">
+                    <Link href="/" className="block">
                       <img
                         src="/logo.png"
                         alt="Meranti Report"
-                        className="h-8 w-auto rounded-sm"
+                        className="h-8 w-auto object-contain"
                       />
-                      <div className="flex flex-col leading-none">
-                        <span className="text-base font-bold tracking-wider uppercase">Meranti</span>
-                        <span className="text-[9px] font-light tracking-widest text-gray-400 uppercase">Report</span>
-                      </div>
                     </Link>
                   </SheetTitle>
                 </SheetHeader>
