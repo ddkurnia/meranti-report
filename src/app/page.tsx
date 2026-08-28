@@ -11,14 +11,16 @@ import { NewsHero } from '@/components/news/news-hero';
 import { NewsGrid } from '@/components/news/news-grid';
 import { NewsCard } from '@/components/news/news-card';
 import { NewsletterSection } from '@/components/news/newsletter-section';
+import { AdSlotRenderer } from '@/components/ads/ad-banner';
 import { ChevronRight, TrendingUp, Newspaper, ArrowRight, Zap } from 'lucide-react';
-import { useRealtimeArticles, useRealtimeFeaturedArticles, useRealtimeCategories } from '@/hooks/use-realtime';
-import type { Article, Category } from '@/types';
+import { useRealtimeArticles, useRealtimeFeaturedArticles, useRealtimeCategories, useRealtimeAds } from '@/hooks/use-realtime';
+import type { Article, Category, AdSlot } from '@/types';
 
 export default function HomePage() {
   const { articles: realtimeArticles, loading: articlesLoading } = useRealtimeArticles(13);
   const { articles: featuredList, loading: featuredLoading } = useRealtimeFeaturedArticles();
   const { categories, loading: catLoading } = useRealtimeCategories();
+  const { ads } = useRealtimeAds();
   const loading = articlesLoading || featuredLoading || catLoading;
 
   const featuredArticle = featuredList.length > 0
@@ -46,18 +48,32 @@ export default function HomePage() {
 
   const moreArticles = hasManyArticles ? realtimeArticles.slice(7, 13) : [];
 
+  // Split latest articles for in-feed ad
+  const firstRow = latestArticles.slice(0, 3);
+  const secondRow = latestArticles.slice(3, 6);
+
   return (
     <>
       <BreakingNewsTicker />
       <Header />
 
       <main className="flex-1">
+        {/* ====== SLOT 1: Header Banner ====== */}
+        <div className="mx-auto max-w-7xl px-4 pt-3">
+          <AdSlotRenderer ads={ads} slotId="slot-1" />
+        </div>
+
         {/* Hero Section */}
         {loading ? (
           <Skeleton className="w-full h-[50vh] sm:h-[60vh] md:h-[65vh]" />
         ) : featuredArticle ? (
           <NewsHero article={featuredArticle} />
         ) : null}
+
+        {/* ====== SLOT 2: After Hero ====== */}
+        <div className="mx-auto max-w-7xl px-4 pt-6">
+          <AdSlotRenderer ads={ads} slotId="slot-2" />
+        </div>
 
         {/* Berita Terbaru */}
         <section className="mx-auto max-w-7xl px-4 py-8 md:py-10">
@@ -79,11 +95,27 @@ export default function HomePage() {
               ))}
             </div>
           ) : (
-            <NewsGrid articles={latestArticles} columns={3} />
+            <>
+              {/* First row of articles */}
+              <NewsGrid articles={firstRow} columns={3} />
+
+              {/* ====== SLOT 3: In-Feed 1 (between article rows) ====== */}
+              <div className="my-6">
+                <AdSlotRenderer ads={ads} slotId="slot-3" />
+              </div>
+
+              {/* Second row of articles */}
+              <NewsGrid articles={secondRow} columns={3} />
+            </>
           )}
         </section>
 
         <Separator className="mx-auto max-w-7xl" />
+
+        {/* ====== SLOT 7: Mid Page 1 (after Berita Terbaru) ====== */}
+        <div className="mx-auto max-w-7xl px-4 py-4">
+          <AdSlotRenderer ads={ads} slotId="slot-7" />
+        </div>
 
         {/* Sidebar Layout: Popular + Pilihan */}
         <section className="mx-auto max-w-7xl px-4 py-8 md:py-10">
@@ -125,13 +157,8 @@ export default function HomePage() {
 
             {/* Right: Sidebar */}
             <aside className="space-y-8">
-              {/* Ad Space Placeholder */}
-              <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-xl p-6 text-center">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Iklan</p>
-                <div className="mt-2 h-60 bg-gray-50 dark:bg-gray-800/50 rounded-lg flex items-center justify-center">
-                  <span className="text-xs text-gray-400">Ruang Iklan 300x250</span>
-                </div>
-              </div>
+              {/* ====== SLOT 4: Sidebar Atas ====== */}
+              <AdSlotRenderer ads={ads} slotId="slot-4" />
 
               {/* Berita Pilihan */}
               {pilihanArticles.length > 0 && (
@@ -164,6 +191,9 @@ export default function HomePage() {
                 </div>
               )}
 
+              {/* ====== SLOT 5: Sidebar Tengah ====== */}
+              <AdSlotRenderer ads={ads} slotId="slot-5" />
+
               {/* Category List */}
               {categories.length > 0 && (
                 <div>
@@ -183,9 +213,17 @@ export default function HomePage() {
                   </div>
                 </div>
               )}
+
+              {/* ====== SLOT 6: Sidebar Bawah ====== */}
+              <AdSlotRenderer ads={ads} slotId="slot-6" />
             </aside>
           </div>
         </section>
+
+        {/* ====== SLOT 8: Mid Page 2 (before More News) ====== */}
+        <div className="mx-auto max-w-7xl px-4 py-4">
+          <AdSlotRenderer ads={ads} slotId="slot-8" />
+        </div>
 
         {/* More News */}
         {moreArticles.length > 0 && (
@@ -213,7 +251,17 @@ export default function HomePage() {
           </>
         )}
 
+        {/* ====== SLOT 9: Pre-Newsletter ====== */}
+        <div className="mx-auto max-w-7xl px-4 py-4">
+          <AdSlotRenderer ads={ads} slotId="slot-9" />
+        </div>
+
         <NewsletterSection />
+
+        {/* ====== SLOT 10: Footer Banner ====== */}
+        <div className="mx-auto max-w-7xl px-4 pt-4 pb-2">
+          <AdSlotRenderer ads={ads} slotId="slot-10" />
+        </div>
       </main>
 
       <Footer />

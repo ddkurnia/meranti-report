@@ -282,3 +282,21 @@ export interface SearchParams {
   limit?: number;
   status?: ArticleStatus;
 }
+
+// Ad Slots
+export type AdType = 'leaderboard' | 'sidebar' | 'inline' | 'banner';
+
+export interface AdSlot {
+  id: string;
+  slotId: string; // e.g., "slot-1", "slot-2", ... "slot-10"
+  title: string; // e.g., "Header Banner", "Sidebar 1"
+  position: string; // placement description
+  type: AdType;
+  imageUrl?: string;
+  linkUrl?: string;
+  altText?: string;
+  advertiserName?: string;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}

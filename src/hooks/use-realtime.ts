@@ -13,7 +13,7 @@ import {
   type QueryConstraint,
 } from 'firebase/firestore';
 import { toDate } from '@/lib/utils';
-import type { Article, Category, Author } from '@/types';
+import type { Article, Category, Author, AdSlot } from '@/types';
 
 /** Normalize Firestore date fields to ISO strings in an object */
 function normalizeDates<T>(doc: Record<string, any>): T {
@@ -321,4 +321,32 @@ export function useRealtimeArticleViewCount(articleId: string) {
   }, [articleId]);
 
   return views;
+}
+
+/**
+ * Realtime ad slots — public (only active ads with images)
+ */
+export function useRealtimeAds() {
+  const { data, loading, error } = useRealtimeCollection<AdSlot>(
+    'ads',
+    [orderBy('slotId', 'asc')],
+    true,
+    '/api/ads'
+  );
+  // Filter: only active ads with imageUrl on client side too
+  const activeAds = data.filter((ad) => ad.active && ad.imageUrl);
+  return { ads: activeAds, allAds: data, loading, error };
+}
+
+/**
+ * Realtime all ad slots — admin (including inactive)
+ */
+export function useRealtimeAllAds() {
+  const { data, loading, error } = useRealtimeCollection<AdSlot>(
+    'ads',
+    [orderBy('slotId', 'asc')],
+    true,
+    '/api/ads?all=true'
+  );
+  return { ads: data, loading, error };
 }
