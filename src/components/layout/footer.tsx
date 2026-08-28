@@ -182,7 +182,7 @@ export function Footer() {
 
       {/* Bottom bar */}
       <div className="mx-auto max-w-7xl px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-gray-500">
-        <span>&copy; 2024 Meranti Report. All rights reserved.</span>
+        <span>&copy; {new Date().getFullYear()} Meranti Report. All rights reserved.</span>
         <div className="flex items-center gap-4">
           <Link href="/privasi" className="hover:text-gray-300 transition-colors">
             Kebijakan Privasi
