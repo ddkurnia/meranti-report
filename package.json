@@ -95,6 +95,10 @@
     "zod": "^4.0.2",
     "zustand": "^5.0.6"
   },
+  "overrides": {
+    "jwks-rsa": "3.2.2",
+    "jose": "^3.20.4"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/react": "^19",
