@@ -13,6 +13,14 @@ export const metadata: Metadata = {
   },
   description: 'Portal berita lokal terpercaya di Kepulauan Meranti. Menyajikan informasi terkini, akurat, dan terpercaya.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://merantireport.com'),
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '48x48' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180' },
+    ],
+  },
   openGraph: {
     title: 'Meranti Report',
     description: 'Portal berita lokal terpercaya di Kepulauan Meranti. Menyajikan informasi terkini, akurat, dan terpercaya.',
