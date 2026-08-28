@@ -38,11 +38,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to get access token' }, { status: 500 });
     }
 
-    // Get project ID from the service account key
-    const saKeyRaw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-    const projectId = saKeyRaw ? JSON.parse(saKeyRaw).project_id : process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+    // Get project ID from the Firebase app (most reliable source)
+    const projectId = (app as any).options.projectId;
     if (!projectId) {
-      return NextResponse.json({ error: 'No project ID' }, { status: 500 });
+      return NextResponse.json({ error: 'No project ID in Firebase app options' }, { status: 500 });
     }
 
     // Check existing indexes
