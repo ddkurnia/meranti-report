@@ -22,7 +22,8 @@ export async function GET(request: NextRequest) {
     return successResponse(categories);
   } catch (error) {
     console.error('Error fetching categories:', error);
-    return errorResponse('Failed to fetch categories');
+    const msg = error instanceof Error ? error.message : String(error);
+    return errorResponse('Failed to fetch categories: ' + msg);
   }
 }
 
