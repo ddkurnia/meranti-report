@@ -6,6 +6,8 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   reactStrictMode: true,
+  // Bundle firebase-admin server-side only, let Node handle ESM deps
+  serverExternalPackages: ['firebase-admin', 'jose', 'jwks-rsa'],
   images: {
     remotePatterns: [
       {
