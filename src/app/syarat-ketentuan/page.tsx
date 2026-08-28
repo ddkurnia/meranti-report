@@ -23,7 +23,7 @@ export default function SyaratKetentuanPage() {
             <section>
               <h2 className="text-xl font-semibold mb-3">1. Ketentuan Umum</h2>
               <p className="mb-3">
-                Syarat &amp; Ketentuan ini ("Ketentuan") mengatur hubungan antara Anda ("Pengguna") dan Meranti Report ("Kami", "Penyedia") dalam penggunaan situs web <strong>meranti-report.vercel.app</strong> dan seluruh layanan terkait (secara bersama disebut "Layanan"). Dengan mengakses atau menggunakan Layanan kami, Anda menyatakan bahwa Anda telah membaca, memahami, dan setuju untuk terikat oleh Ketentuan ini.
+                Syarat &amp; Ketentuan ini ("Ketentuan") mengatur hubungan antara Anda ("Pengguna") dan Meranti Report ("Kami", "Penyedia") dalam penggunaan situs web <strong>merantireport.com</strong> dan seluruh layanan terkait (secara bersama disebut "Layanan"). Dengan mengakses atau menggunakan Layanan kami, Anda menyatakan bahwa Anda telah membaca, memahami, dan setuju untuk terikat oleh Ketentuan ini.
               </p>
               <p>
                 Jika Anda tidak menyetujui sebagian atau seluruh Ketentuan ini, Anda harus menghentikan penggunaan Layanan kami secara langsung. Kami berhak mengubah Ketentuan ini kapan saja, dan perubahan tersebut berlaku efektif segera setelah dipublikasikan di situs.

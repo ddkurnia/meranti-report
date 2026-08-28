@@ -23,7 +23,7 @@ export default function KebijakanPrivasiPage() {
             <section>
               <h2 className="text-xl font-semibold mb-3">1. Pendahuluan</h2>
               <p className="mb-3">
-                Meranti Report (&quot;Kami&quot;) berkomitmen untuk melindungi privasi pengguna layanan kami. Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi pribadi Anda saat mengakses dan menggunakan situs <strong>meranti-report.vercel.app</strong> serta seluruh layanan terkait yang kami sediakan.
+                Meranti Report (&quot;Kami&quot;) berkomitmen untuk melindungi privasi pengguna layanan kami. Kebijakan Privasi ini menjelaskan bagaimana kami mengumpulkan, menggunakan, menyimpan, dan melindungi informasi pribadi Anda saat mengakses dan menggunakan situs <strong>merantireport.com</strong> serta seluruh layanan terkait yang kami sediakan.
               </p>
               <p>
                 Dengan mengakses dan menggunakan situs kami, Anda menyetujui praktik pengumpulan dan penggunaan informasi yang dijelaskan dalam Kebijakan Privasi ini. Jika Anda tidak setuju dengan kebijakan ini, mohon untuk tidak menggunakan layanan kami.
