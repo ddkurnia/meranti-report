@@ -85,8 +85,7 @@ export async function POST(request: NextRequest) {
         const body = JSON.stringify({
           name: `projects/${projectId}/databases/(default)/indexes/-`,
           collectionId: idx.collectionId,
-          fields: idx.fields.map(f => ({ fieldPath: f.fieldPath, order: f.order })),
-          queryScope: 'COLLECTION',
+          fields: idx.fields.map((f: any) => ({ fieldPath: f.fieldPath, mode: f.order })),
         });
 
         const res = await firestoreRequest(
