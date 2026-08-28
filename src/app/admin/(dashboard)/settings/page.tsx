@@ -17,12 +17,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { db, isFirebaseClientConfigured } from '@/lib/firebase/client';
 import { Loader2, Save } from 'lucide-react';
 import {
   doc,
   onSnapshot,
-  setDoc,
   type Unsubscribe,
 } from 'firebase/firestore';
 import type { SiteSettings } from '@/types';
@@ -185,19 +185,21 @@ export default function AdminSettingsPage() {
     };
   }, [toast]);
 
+  const { fetchWithAuth } = useAuth();
+
   const saveSection = async (section: string) => {
-    if (!isFirebaseClientConfigured) {
-      toast({ title: 'Gagal', description: 'Firebase tidak dikonfigurasi.', variant: 'destructive' });
-      return;
-    }
     setSaving(section);
     try {
-      const settingsRef = doc(db, 'settings', 'site');
-      await setDoc(settingsRef, settings, { merge: true });
+      const res = await fetchWithAuth('/api/settings', {
+        method: 'PUT',
+        body: JSON.stringify(settings),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Gagal menyimpan');
       toast({ title: 'Berhasil', description: 'Pengaturan berhasil disimpan.' });
     } catch (err) {
       console.error('Failed to save settings:', err);
-      toast({ title: 'Gagal', description: 'Gagal menyimpan pengaturan.', variant: 'destructive' });
+      toast({ title: 'Gagal', description: err instanceof Error ? err.message : 'Gagal menyimpan pengaturan.', variant: 'destructive' });
     } finally {
       setSaving(null);
     }
