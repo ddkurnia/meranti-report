@@ -29,9 +29,24 @@ function normalizeDates<T>(doc: Record<string, any>): T {
 }
 
 /**
- * Generic hook for realtime Firestore collection listener with API fallback.
- * Tries onSnapshot first for true realtime. If it fails (e.g. missing composite index),
- * falls back to fetching the REST API endpoint.
+ * Fetch data from API endpoint.
+ * Returns normalized array of items.
+ */
+async function fetchApi<T>(apiUrl: string): Promise<T[]> {
+  const res = await fetch(apiUrl);
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  const json = await res.json();
+  return (json.data || json || []) as T[];
+}
+
+/**
+ * Generic hook: API-first with realtime upgrade.
+ *
+ * Strategy:
+ * 1. Fetch from API immediately (reliable, no composite index needed)
+ * 2. In parallel, attempt onSnapshot for realtime updates
+ * 3. If onSnapshot succeeds, it takes over for live data
+ * 4. If onSnapshot fails (missing index etc.), API data stays active
  */
 function useRealtimeCollection<T>(
   collectionName: string,
@@ -42,104 +57,82 @@ function useRealtimeCollection<T>(
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const realtimeFailedRef = useRef(false);
-  const initialLoadDoneRef = useRef(false);
-
-  // API fallback fetcher
-  const fetchFromApi = useCallback(async () => {
-    if (!fallbackApiUrl) return;
-    try {
-      const res = await fetch(fallbackApiUrl);
-      if (res.ok) {
-        const json = await res.json();
-        const items = (json.data || json || []) as T[];
-        if (items.length > 0) {
-          setData((prev) => {
-            // Only use API data if realtime hasn't already loaded
-            if (prev.length > 0 && !realtimeFailedRef.current) return prev;
-            return items;
-          });
-        }
-      }
-    } catch (err) {
-      console.warn(`API fallback failed [${collectionName}]:`, err);
-    }
-  }, [fallbackApiUrl, collectionName]);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
+
     if (!enabled) {
       setLoading(false);
       return;
     }
 
-    // If Firebase client not configured, go straight to API fallback
-    if (!isFirebaseClientConfigured || !db) {
-      setLoading(true);
-      fetchFromApi().finally(() => setLoading(false));
-      return;
-    }
-
     setLoading(true);
-    realtimeFailedRef.current = false;
-    initialLoadDoneRef.current = false;
-
-    const colRef = collection(db, collectionName);
-    const q = constraints.length > 0 ? query(colRef, ...constraints) : colRef;
-
-    let unsubscribe: Unsubscribe;
+    setError(null);
+    let unsubscribe: Unsubscribe | undefined;
+    let apiDataReceived = false;
     let snapshotReceived = false;
 
-    // Set a timeout: if onSnapshot doesn't fire within 4s, try API fallback
-    const fallbackTimer = setTimeout(() => {
-      if (!snapshotReceived && fallbackApiUrl) {
-        console.warn(`[Realtime] Timeout for ${collectionName}, trying API fallback`);
-        realtimeFailedRef.current = true;
-        fetchFromApi().finally(() => setLoading(false));
-      } else if (!snapshotReceived) {
-        // No fallback URL, just stop loading
-        setLoading(false);
-      }
-    }, 4000);
-
-    try {
-      unsubscribe = onSnapshot(
-        q,
-        (snapshot) => {
-          snapshotReceived = true;
-          clearTimeout(fallbackTimer);
-          const items = snapshot.docs.map((doc) =>
-            normalizeDates<T>({ id: doc.id, ...doc.data() })
-          );
-          setData(items);
-          setLoading(false);
-          setError(null);
-          initialLoadDoneRef.current = true;
-        },
-        (err) => {
-          console.warn(`[Realtime] onSnapshot error [${collectionName}]:`, err.message);
-          clearTimeout(fallbackTimer);
-          realtimeFailedRef.current = true;
-          setError(err.message);
-          setLoading(false);
-          // Try API fallback on error
-          if (fallbackApiUrl) {
-            fetchFromApi();
+    // ---- STEP 1: Fetch from API immediately ----
+    if (fallbackApiUrl) {
+      fetchApi<T>(fallbackApiUrl)
+        .then((items) => {
+          if (!mountedRef.current) return;
+          apiDataReceived = true;
+          if (!snapshotReceived) {
+            setData(items);
+            setLoading(false);
           }
-        }
-      );
-    } catch (err) {
-      console.warn(`[Realtime] Failed to setup listener [${collectionName}]:`, err);
-      clearTimeout(fallbackTimer);
-      realtimeFailedRef.current = true;
+        })
+        .catch((err) => {
+          console.warn(`[Realtime] API fetch failed [${collectionName}]:`, err.message);
+          // If API also fails and no snapshot yet, stop loading
+          if (!snapshotReceived) {
+            setLoading(false);
+            setError(err.message);
+          }
+        });
+    } else {
+      // No API URL — must rely on onSnapshot or nothing
       setLoading(false);
-      // Try API fallback
-      if (fallbackApiUrl) {
-        fetchFromApi();
+    }
+
+    // ---- STEP 2: Try onSnapshot for realtime ----
+    if (isFirebaseClientConfigured && db) {
+      const colRef = collection(db, collectionName);
+      const q = constraints.length > 0 ? query(colRef, ...constraints) : colRef;
+
+      try {
+        unsubscribe = onSnapshot(
+          q,
+          (snapshot) => {
+            if (!mountedRef.current) return;
+            snapshotReceived = true;
+            const items = snapshot.docs.map((doc) =>
+              normalizeDates<T>({ id: doc.id, ...doc.data() })
+            );
+            setData(items);
+            setLoading(false);
+            setError(null);
+          },
+          (err) => {
+            // onSnapshot failed (likely missing composite index)
+            // That's OK — API data is already showing if it succeeded
+            console.warn(`[Realtime] onSnapshot error [${collectionName}]:`, err.message);
+            // Only set error if neither API nor snapshot has data
+            if (!apiDataReceived && !snapshotReceived) {
+              setError(err.message);
+              setLoading(false);
+            }
+          }
+        );
+      } catch (err) {
+        console.warn(`[Realtime] Failed to setup listener [${collectionName}]:`, err);
       }
     }
 
     return () => {
-      clearTimeout(fallbackTimer);
+      mountedRef.current = false;
       if (unsubscribe) unsubscribe();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -314,7 +307,6 @@ export function useRealtimeArticleViewCount(articleId: string) {
   useEffect(() => {
     if (!isFirebaseClientConfigured || !db || !articleId) return;
 
-    // Poll via API for views
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/articles/${articleId}`);
