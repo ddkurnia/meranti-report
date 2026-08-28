@@ -67,7 +67,6 @@
     "framer-motion": "^12.23.2",
     "google-auth-library": "^11.0.2",
     "input-otp": "^1.4.2",
-    "jose": "^3.20.4",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.525.0",
     "next": "^16.1.1",
@@ -94,10 +93,7 @@
     "zod": "^4.0.2",
     "zustand": "^5.0.6"
   },
-  "overrides": {
-    "jwks-rsa": "3.2.2",
-    "jose": "^3.20.4"
-  },
+
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/react": "^19",
