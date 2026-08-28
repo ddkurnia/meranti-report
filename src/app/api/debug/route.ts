@@ -1,33 +1,44 @@
 import { NextResponse } from 'next/server';
 
 export async function GET() {
-  const saKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const results: Record<string, unknown> = {};
   
-  let saParsed = false;
-  let saError = '';
-  let projectIdFromSA = '';
+  // Test 1: Env vars
+  const saKey = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  results.hasSAKey = !!saKey;
+  results.saKeyLength = saKey?.length || 0;
   
   if (saKey) {
     try {
       const parsed = JSON.parse(saKey);
-      saParsed = !!parsed.private_key;
-      projectIdFromSA = parsed.project_id || '';
+      results.saParsed = !!parsed.private_key;
+      results.projectIdFromSA = parsed.project_id;
     } catch (e: unknown) {
-      saError = (e as Error).message;
+      results.saError = (e as Error).message;
     }
   }
   
-  return NextResponse.json({
-    hasApiKey: !!apiKey,
-    hasProjectId: !!projectId,
-    projectId,
-    hasSAKey: !!saKey,
-    saKeyLength: saKey?.length || 0,
-    saParsed,
-    saError,
-    projectIdFromSA,
-    envKeys: Object.keys(process.env).filter(k => k.startsWith('FIREBASE') || k.startsWith('CLOUDINARY') || k.startsWith('NEXT_PUBLIC_FIREBASE')).sort(),
-  });
+  // Test 2: Try importing and using admin SDK
+  try {
+    const { adminDb, adminAuth, isFirebaseAdminConfigured } = await import('@/lib/firebase/admin');
+    results.adminDbReady = !!adminDb;
+    results.adminAuthReady = !!adminAuth;
+    results.isAdminConfigured = isFirebaseAdminConfigured();
+    
+    if (adminDb) {
+      // Test 3: Try a simple Firestore read
+      try {
+        const snap = await adminDb.collection('categories').limit(1).get();
+        results.firestoreRead = 'ok';
+        results.firestoreDocCount = snap.size;
+      } catch (e: unknown) {
+        results.firestoreRead = 'error';
+        results.firestoreError = (e as Error).message;
+      }
+    }
+  } catch (e: unknown) {
+    results.adminImportError = (e as Error).message;
+  }
+  
+  return NextResponse.json(results);
 }
