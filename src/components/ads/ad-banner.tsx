@@ -10,17 +10,8 @@ interface AdBannerProps {
 }
 
 export function AdBanner({ ad, className }: AdBannerProps) {
-  const isSidebar = ad.type === 'sidebar';
-  const isLeaderboard = ad.type === 'leaderboard';
-  const isBanner = ad.type === 'banner';
-  const isInline = ad.type === 'inline';
-
   const wrapperClass = cn(
-    'relative overflow-hidden group cursor-pointer transition-all duration-300 hover:shadow-md',
-    isSidebar && 'rounded-xl',
-    isLeaderboard && 'rounded-xl w-full',
-    isBanner && 'rounded-xl w-full',
-    isInline && 'rounded-xl',
+    'relative overflow-hidden group cursor-pointer transition-all duration-300 hover:shadow-md rounded-xl w-full',
     className,
   );
 
@@ -29,13 +20,7 @@ export function AdBanner({ ad, className }: AdBannerProps) {
       <img
         src={ad.imageUrl}
         alt={ad.altText || ad.title || 'Iklan'}
-        className={cn(
-          'w-full h-auto object-cover transition-transform duration-500 group-hover:scale-[1.02]',
-          isSidebar && 'aspect-[4/3]',
-          isLeaderboard && 'aspect-[7.28/0.9]',
-          isBanner && 'aspect-[7.28/1.5]',
-          isInline && 'aspect-[3/1] sm:aspect-[7.28/0.9]',
-        )}
+        className="w-full h-auto block transition-transform duration-500 group-hover:scale-[1.02]"
         loading="lazy"
       />
       {/* Hover overlay */}
