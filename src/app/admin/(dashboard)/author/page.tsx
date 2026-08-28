@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,14 +33,24 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
 import { generateSlug } from '@/lib/utils';
+import { db, isFirebaseClientConfigured } from '@/lib/firebase/client';
+import {
+  collection,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  orderBy,
+  type Unsubscribe,
+} from 'firebase/firestore';
 import { Plus, Pencil, Trash2, Loader2, PenTool } from 'lucide-react';
-import type { Author, AuthorFormData } from '@/types';
+import type { Author } from '@/types';
 
 export default function AdminAuthorPage() {
   const { toast } = useToast();
-  const { fetchWithAuth } = useAuth();
   const [authors, setAuthors] = useState<Author[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -58,24 +68,46 @@ export default function AdminAuthorPage() {
   const [formInstagram, setFormInstagram] = useState('');
   const [formTwitter, setFormTwitter] = useState('');
 
-  const fetchAuthors = useCallback(async () => {
-    setLoading(true);
+  // Realtime listener for authors
+  useEffect(() => {
+    if (!isFirebaseClientConfigured || !db) {
+      setLoading(false);
+      return;
+    }
+
+    const q = query(collection(db, 'authors'), orderBy('name', 'asc'));
+    let unsubscribe: Unsubscribe;
+
     try {
-      const res = await fetch('/api/authors');
-      if (res.ok) {
-        const data = await res.json();
-        setAuthors(data.data || []);
-      }
+      unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const items = snapshot.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+          })) as Author[];
+          setAuthors(items);
+          setLoading(false);
+        },
+        (err) => {
+          console.error('Realtime authors error:', err);
+          toast({
+            title: 'Error',
+            description: 'Gagal memuat penulis: ' + err.message,
+            variant: 'destructive',
+          });
+          setLoading(false);
+        }
+      );
     } catch (err) {
-      console.error('Failed to fetch authors:', err);
-    } finally {
+      console.error('Failed to setup authors listener:', err);
       setLoading(false);
     }
-  }, []);
 
-  useEffect(() => {
-    fetchAuthors();
-  }, [fetchAuthors]);
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [toast]);
 
   const openCreateDialog = () => {
     setEditingId(null);
@@ -109,59 +141,68 @@ export default function AdminAuthorPage() {
       return;
     }
 
+    if (!db) {
+      toast({ title: 'Gagal', description: 'Firebase tidak tersedia.', variant: 'destructive' });
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const payload: AuthorFormData = {
-        name: formName.trim(),
-        slug: formSlug.trim() || generateSlug(formName),
-        photo: formPhoto.trim() || undefined,
-        bio: formBio.trim() || undefined,
-        position: formPosition.trim() || undefined,
-        facebook: formFacebook.trim() || undefined,
-        instagram: formInstagram.trim() || undefined,
-        twitter: formTwitter.trim() || undefined,
-      };
+      const authorSlug = formSlug.trim() || generateSlug(formName);
+      const now = new Date().toISOString();
 
-      const url = editingId ? `/api/authors/${editingId}` : '/api/authors';
-      const method = editingId ? 'PUT' : 'POST';
-
-      const res = await fetchWithAuth(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        toast({ title: 'Berhasil', description: editingId ? 'Penulis berhasil diperbarui.' : 'Penulis berhasil ditambahkan.' });
-        setDialogOpen(false);
-        fetchAuthors();
+      if (editingId) {
+        await updateDoc(doc(db, 'authors', editingId), {
+          name: formName.trim(),
+          slug: authorSlug,
+          photo: formPhoto.trim() || null,
+          bio: formBio.trim() || null,
+          position: formPosition.trim() || null,
+          facebook: formFacebook.trim() || null,
+          instagram: formInstagram.trim() || null,
+          twitter: formTwitter.trim() || null,
+          updatedAt: now,
+        });
+        toast({ title: 'Berhasil', description: 'Penulis berhasil diperbarui.' });
       } else {
-        const data = await res.json().catch(() => ({}));
-        toast({ title: 'Gagal', description: data.error || 'Gagal menyimpan penulis.', variant: 'destructive' });
+        await addDoc(collection(db, 'authors'), {
+          name: formName.trim(),
+          slug: authorSlug,
+          photo: formPhoto.trim() || null,
+          bio: formBio.trim() || null,
+          position: formPosition.trim() || null,
+          facebook: formFacebook.trim() || null,
+          instagram: formInstagram.trim() || null,
+          twitter: formTwitter.trim() || null,
+          createdAt: now,
+          updatedAt: now,
+        });
+        toast({ title: 'Berhasil', description: 'Penulis berhasil ditambahkan.' });
       }
-    } catch {
-      toast({ title: 'Gagal', description: 'Terjadi kesalahan.', variant: 'destructive' });
+
+      setDialogOpen(false);
+    } catch (err) {
+      console.error('Error saving author:', err);
+      const msg = err instanceof Error ? err.message : 'Gagal menyimpan penulis.';
+      toast({ title: 'Gagal', description: msg, variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!deleteId) return;
+    if (!deleteId || !db) return;
     setSubmitting(true);
     try {
-      const res = await fetchWithAuth(`/api/authors/${deleteId}`, { method: 'DELETE' });
-      if (res.ok) {
-        toast({ title: 'Berhasil', description: 'Penulis berhasil dihapus.' });
-        setAuthors((prev) => prev.filter((a) => a.id !== deleteId));
-      } else {
-        toast({ title: 'Gagal', description: 'Gagal menghapus penulis.', variant: 'destructive' });
-      }
-    } catch {
-      toast({ title: 'Gagal', description: 'Terjadi kesalahan.', variant: 'destructive' });
+      await deleteDoc(doc(db, 'authors', deleteId));
+      toast({ title: 'Berhasil', description: 'Penulis berhasil dihapus.' });
+      setDeleteId(null);
+    } catch (err) {
+      console.error('Error deleting author:', err);
+      const msg = err instanceof Error ? err.message : 'Gagal menghapus penulis.';
+      toast({ title: 'Gagal', description: msg, variant: 'destructive' });
     } finally {
       setSubmitting(false);
-      setDeleteId(null);
     }
   };
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   DropdownMenu,
@@ -40,7 +39,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
 import {
   Plus,
   Search,
@@ -53,14 +51,24 @@ import {
   Newspaper,
 } from 'lucide-react';
 import { formatNumber, formatDateShort } from '@/lib/utils';
-import type { Article, Category, ArticleStatus, PaginatedResponse } from '@/types';
+import { db, isFirebaseClientConfigured } from '@/lib/firebase/client';
+import {
+  collection,
+  onSnapshot,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  orderBy,
+  type Unsubscribe,
+} from 'firebase/firestore';
+import type { Article, Category, ArticleStatus } from '@/types';
 
 export default function AdminBeritaPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { fetchWithAuth } = useAuth();
 
-  const [articles, setArticles] = useState<Article[]>([]);
+  const [allArticles, setAllArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
@@ -71,66 +79,111 @@ export default function AdminBeritaPage() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
 
-  const fetchCategories = useCallback(async () => {
-    try {
-      const res = await fetch('/api/categories');
-      if (res.ok) {
-        const data = await res.json();
-        setCategories(data.data || []);
-      }
-    } catch (err) {
-      console.error('Failed to fetch categories:', err);
+  // Realtime articles listener
+  useEffect(() => {
+    if (!isFirebaseClientConfigured || !db) {
+      setLoading(false);
+      return;
     }
-  }, []);
 
-  const fetchArticles = useCallback(async () => {
-    setLoading(true);
+    const q = query(collection(db, 'articles'), orderBy('updatedAt', 'desc'));
+    let unsubscribe: Unsubscribe;
+
     try {
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(limit),
-      });
-      if (search) params.set('query', search);
-      if (categoryFilter !== 'all') params.set('category', categoryFilter);
-      if (statusFilter !== 'all') params.set('status', statusFilter);
-
-      const res = await fetch(`/api/articles?${params.toString()}`);
-      if (res.ok) {
-        const data: PaginatedResponse<Article> = await res.json();
-        setArticles(data.data || []);
-        setTotalPages(data.pagination?.totalPages || 1);
-      }
+      unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const items = snapshot.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+          })) as Article[];
+          setAllArticles(items);
+          setLoading(false);
+        },
+        (err) => {
+          console.error('Realtime articles error:', err);
+          toast({
+            title: 'Error',
+            description: 'Gagal memuat berita: ' + err.message,
+            variant: 'destructive',
+          });
+          setLoading(false);
+        }
+      );
     } catch (err) {
-      console.error('Failed to fetch articles:', err);
-    } finally {
+      console.error('Failed to setup articles listener:', err);
       setLoading(false);
     }
-  }, [search, categoryFilter, statusFilter, page]);
 
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+    return () => { if (unsubscribe) unsubscribe(); };
+  }, [toast]);
 
+  // Realtime categories listener
   useEffect(() => {
-    fetchArticles();
-  }, [fetchArticles]);
+    if (!isFirebaseClientConfigured || !db) return;
+
+    const q = query(collection(db, 'categories'), orderBy('order', 'asc'));
+    let unsubscribe: Unsubscribe;
+
+    try {
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Category[];
+        setCategories(items);
+      });
+    } catch (err) {
+      console.error('Failed to setup categories listener:', err);
+    }
+
+    return () => { if (unsubscribe) unsubscribe(); };
+  }, []);
+
+  // Client-side filtering and pagination
+  const filteredArticles = useMemo(() => {
+    let result = allArticles;
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      result = result.filter((a) => a.status === statusFilter);
+    }
+
+    // Category filter
+    if (categoryFilter !== 'all') {
+      result = result.filter((a) => a.categoryId === categoryFilter);
+    }
+
+    // Search filter
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter((a) =>
+        (a.title || '').toLowerCase().includes(q) ||
+        (a.excerpt || '').toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  }, [allArticles, statusFilter, categoryFilter, search]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredArticles.length / limit));
+  const articles = useMemo(() => {
+    const start = (page - 1) * limit;
+    return filteredArticles.slice(start, start + limit);
+  }, [filteredArticles, page]);
+
+  // Reset page when filters change
+  useEffect(() => { setPage(1); }, [statusFilter, categoryFilter, search]);
 
   const handleDelete = async () => {
-    if (!deleteId) return;
+    if (!deleteId || !db) return;
     setDeleting(deleteId);
     try {
-      const res = await fetchWithAuth(`/api/articles/${deleteId}`, { method: 'DELETE' });
-      if (res.ok) {
-        toast({ title: 'Berhasil', description: 'Berita berhasil dihapus.' });
-        setArticles((prev) => prev.filter((a) => a.id !== deleteId));
-      } else {
-        toast({ title: 'Gagal', description: 'Gagal menghapus berita.', variant: 'destructive' });
-      }
-    } catch {
-      toast({ title: 'Gagal', description: 'Terjadi kesalahan.', variant: 'destructive' });
+      await deleteDoc(doc(db, 'articles', deleteId));
+      toast({ title: 'Berhasil', description: 'Berita berhasil dihapus.' });
+    } catch (err) {
+      console.error('Error deleting article:', err);
+      const msg = err instanceof Error ? err.message : 'Gagal menghapus berita.';
+      toast({ title: 'Gagal', description: msg, variant: 'destructive' });
     } finally {
       setDeleting(null);
       setDeleteId(null);
@@ -138,22 +191,26 @@ export default function AdminBeritaPage() {
   };
 
   const handleTogglePublish = async (article: Article) => {
+    if (!db) return;
     const newStatus: ArticleStatus = article.status === 'published' ? 'draft' : 'published';
+    const now = new Date().toISOString();
     try {
-      const res = await fetchWithAuth(`/api/articles/${article.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
-      });
-      if (res.ok) {
-        toast({
-          title: 'Berhasil',
-          description: `Berita diubah ke ${newStatus === 'published' ? 'Published' : 'Draft'}.`,
-        });
-        fetchArticles();
+      const updateData: Record<string, unknown> = {
+        status: newStatus,
+        updatedAt: now,
+      };
+      if (newStatus === 'published') {
+        updateData.publishedAt = now;
       }
-    } catch {
-      toast({ title: 'Gagal', description: 'Terjadi kesalahan.', variant: 'destructive' });
+      await updateDoc(doc(db, 'articles', article.id), updateData);
+      toast({
+        title: 'Berhasil',
+        description: `Berita diubah ke ${newStatus === 'published' ? 'Published' : 'Draft'}.`,
+      });
+    } catch (err) {
+      console.error('Error toggling publish:', err);
+      const msg = err instanceof Error ? err.message : 'Gagal mengubah status berita.';
+      toast({ title: 'Gagal', description: msg, variant: 'destructive' });
     }
   };
 
@@ -191,10 +248,7 @@ export default function AdminBeritaPage() {
           <Input
             placeholder="Cari berita..."
             value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
             className="pl-9"
           />
         </div>

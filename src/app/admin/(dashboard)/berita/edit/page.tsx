@@ -24,8 +24,17 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
 import { generateSlug } from '@/lib/utils';
+import { db, isFirebaseClientConfigured } from '@/lib/firebase/client';
+import {
+  collection,
+  onSnapshot,
+  updateDoc,
+  doc,
+  query,
+  orderBy,
+  type Unsubscribe,
+} from 'firebase/firestore';
 import type { Category, Article, ArticleStatus } from '@/types';
 import {
   ArrowLeft,
@@ -52,7 +61,7 @@ function EditArticleForm() {
   const searchParams = useSearchParams();
   const articleId = searchParams.get('id');
   const { toast } = useToast();
-  const { fetchWithAuth } = useAuth();
+
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Form state
@@ -110,25 +119,37 @@ function EditArticleForm() {
 
   // Fetch article and categories
   useEffect(() => {
-    async function fetchData() {
-      if (!articleId) {
-        router.push('/admin/berita');
-        return;
-      }
+    if (!articleId) {
+      router.push('/admin/berita');
+      return;
+    }
 
+    if (!isFirebaseClientConfigured || !db) {
+      setLoading(false);
+      setLoadingCategories(false);
+      return;
+    }
+
+    // Categories listener
+    const catQ = query(collection(db, 'categories'), orderBy('order', 'asc'));
+    let catUnsub: Unsubscribe;
+    try {
+      catUnsub = onSnapshot(catQ, (snapshot) => {
+        const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Category[];
+        setCategories(items);
+        setLoadingCategories(false);
+      });
+    } catch (err) {
+      console.error('Failed to setup categories listener:', err);
+      setLoadingCategories(false);
+    }
+
+    // Article one-time fetch
+    (async () => {
       try {
-        const [articleRes, catRes] = await Promise.all([
-          fetch(`/api/articles/${articleId}`),
-          fetch('/api/categories'),
-        ]);
-
-        if (catRes.ok) {
-          const catData = await catRes.json();
-          setCategories(catData.data || []);
-        }
-
-        if (articleRes.ok) {
-          const articleData = await articleRes.json();
+        const res = await fetch(`/api/articles/${articleId}`);
+        if (res.ok) {
+          const articleData = await res.json();
           const article: Article = articleData.data;
           setTitle(article.title || '');
           setSlug(article.slug || '');
@@ -151,8 +172,6 @@ function EditArticleForm() {
             const offset = d.getTimezoneOffset() * 60000;
             setPublishedAt(new Date(d.getTime() - offset).toISOString().slice(0, 16));
           }
-
-          // Set editor content after load
           if (editor && article.content) {
             editor.commands.setContent(article.content);
           }
@@ -166,11 +185,11 @@ function EditArticleForm() {
         router.push('/admin/berita');
       } finally {
         setLoading(false);
-        setLoadingCategories(false);
       }
-    }
-    fetchData();
-  }, [articleId, router, toast, editor]);
+    })();
+
+    return () => { if (catUnsub) catUnsub(); };
+  }, [articleId]);
 
   // Auto-save indicator
   const triggerAutoSave = useCallback(() => {
@@ -203,48 +222,44 @@ function EditArticleForm() {
 
   // Submit
   const handleSubmit = async (submitStatus: ArticleStatus) => {
-    if (!validate() || !articleId) return;
+    if (!validate() || !articleId || !db) return;
     setSubmitting(true);
 
     try {
-      const payload = {
+      const selectedCategory = categories.find((c) => c.id === categoryId);
+      const now = new Date().toISOString();
+
+      const updateData: Record<string, unknown> = {
         title: title.trim(),
         slug: slug.trim(),
-        subheading: subheading.trim() || undefined,
         excerpt: excerpt.trim(),
         content: editor?.getHTML() || '',
-        featuredImage: featuredImage.trim() || undefined,
-        imageCaption: imageCaption.trim() || undefined,
         categoryId,
+        categoryName: selectedCategory?.name || '',
+        categorySlug: selectedCategory?.slug || '',
         tags,
         status: submitStatus,
         featured,
         breaking,
-        seoTitle: seoTitle.trim() || undefined,
-        seoDescription: seoDescription.trim() || undefined,
-        seoKeywords: seoKeywords
-          .split(',')
-          .map((k) => k.trim())
-          .filter(Boolean) || undefined,
-        canonicalUrl: canonicalUrl.trim() || undefined,
-        publishedAt: publishedAt ? new Date(publishedAt).toISOString() : undefined,
+        updatedAt: now,
       };
 
-      const res = await fetchWithAuth(`/api/articles/${articleId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      if (subheading.trim()) updateData.subheading = subheading.trim();
+      if (featuredImage.trim()) updateData.featuredImage = featuredImage.trim();
+      if (imageCaption.trim()) updateData.imageCaption = imageCaption.trim();
+      if (seoTitle.trim()) updateData.seoTitle = seoTitle.trim();
+      if (seoDescription.trim()) updateData.seoDescription = seoDescription.trim();
+      if (seoKeywords.trim()) updateData.seoKeywords = seoKeywords.split(',').map((k) => k.trim()).filter(Boolean);
+      if (canonicalUrl.trim()) updateData.canonicalUrl = canonicalUrl.trim();
+      if (submitStatus === 'published') updateData.publishedAt = now;
 
-      if (res.ok) {
-        toast({ title: 'Berhasil', description: 'Berita berhasil diperbarui.' });
-        router.push('/admin/berita');
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast({ title: 'Gagal', description: data.error || 'Gagal memperbarui berita.', variant: 'destructive' });
-      }
-    } catch {
-      toast({ title: 'Gagal', description: 'Terjadi kesalahan jaringan.', variant: 'destructive' });
+      await updateDoc(doc(db, 'articles', articleId), updateData);
+      toast({ title: 'Berhasil', description: 'Berita berhasil diperbarui.' });
+      router.push('/admin/berita');
+    } catch (err) {
+      console.error('Error updating article:', err);
+      const msg = err instanceof Error ? err.message : 'Gagal memperbarui berita.';
+      toast({ title: 'Gagal', description: msg, variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }

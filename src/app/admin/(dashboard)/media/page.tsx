@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
@@ -16,12 +16,23 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth';
-import { Upload, Trash2, ImageOff, Copy, Loader2, ImageIcon } from 'lucide-react';
+import { db, isFirebaseClientConfigured } from '@/lib/firebase/client';
+import {
+  collection,
+  onSnapshot,
+  deleteDoc,
+  doc,
+  query,
+  orderBy,
+  addDoc,
+  type Unsubscribe,
+} from 'firebase/firestore';
+import { Upload, Trash2, ImageOff, Copy, Loader2 } from 'lucide-react';
 import type { MediaItem } from '@/types';
 
 export default function AdminMediaPage() {
   const { toast } = useToast();
-  const { fetchWithAuth, firebaseUser } = useAuth();
+  const { firebaseUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -31,69 +42,80 @@ export default function AdminMediaPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchMedia = useCallback(async () => {
-    setLoading(true);
+  // Realtime media listener
+  useEffect(() => {
+    if (!isFirebaseClientConfigured || !db) {
+      setLoading(false);
+      return;
+    }
+    const q = query(collection(db, 'media'), orderBy('createdAt', 'desc'));
+    let unsubscribe: Unsubscribe;
     try {
-      const res = await fetch('/api/media');
-      if (res.ok) {
-        const data = await res.json();
-        setMedia(data.data || []);
-      }
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as MediaItem[];
+        setMedia(items);
+        setLoading(false);
+      }, (err) => {
+        console.error('Realtime media error:', err);
+        setLoading(false);
+      });
     } catch (err) {
-      console.error('Failed to fetch media:', err);
-    } finally {
+      console.error('Failed to setup media listener:', err);
       setLoading(false);
     }
+    return () => { if (unsubscribe) unsubscribe(); };
   }, []);
-
-  useEffect(() => {
-    fetchMedia();
-  }, [fetchMedia]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0 || !db) return;
 
     setUploading(true);
     setUploadProgress(0);
 
-    const formData = new FormData();
-    for (let i = 0; i < files.length; i++) {
-      formData.append('files', files[i]);
-    }
-
     try {
-      const token = firebaseUser ? await firebaseUser.getIdToken() : null;
-      const xhr = new XMLHttpRequest();
+      const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'tsgloc4b';
+      const UPLOAD_PRESET = 'merantireport';
+      const total = files.length;
+      let completed = 0;
 
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const pct = Math.round((event.loaded / event.total) * 100);
-          setUploadProgress(pct);
+      for (const file of Array.from(files)) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('upload_preset', UPLOAD_PRESET);
+
+        const pct = Math.round((completed / total) * 100);
+        setUploadProgress(pct);
+
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          const mediaItem = {
+            url: data.secure_url,
+            secureUrl: data.secure_url,
+            publicId: data.public_id,
+            format: data.format,
+            width: data.width,
+            height: data.height,
+            size: data.bytes,
+            resourceType: data.resource_type,
+            uploadedBy: firebaseUser?.uid || '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+          await addDoc(collection(db, 'media'), mediaItem);
         }
-      });
-
-      const response = await new Promise<{ ok: boolean; data?: MediaItem[] }>((resolve, reject) => {
-        xhr.onload = () => {
-          try {
-            resolve(JSON.parse(xhr.responseText));
-          } catch {
-            reject(new Error('Upload gagal'));
-          }
-        };
-        xhr.onerror = () => reject(new Error('Upload gagal'));
-        xhr.open('POST', '/api/upload');
-        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-        xhr.send(formData);
-      });
-
-      if (response.ok) {
-        toast({ title: 'Berhasil', description: `${files.length} file berhasil diunggah.` });
-        fetchMedia();
-      } else {
-        toast({ title: 'Gagal', description: 'Gagal mengunggah file.', variant: 'destructive' });
+        completed++;
+        setUploadProgress(Math.round((completed / total) * 100));
       }
-    } catch {
+
+      toast({ title: 'Berhasil', description: `${total} file berhasil diunggah.` });
+    } catch (err) {
+      console.error('Upload error:', err);
       toast({ title: 'Gagal', description: 'Terjadi kesalahan saat upload.', variant: 'destructive' });
     } finally {
       setUploading(false);
@@ -103,21 +125,18 @@ export default function AdminMediaPage() {
   };
 
   const handleDelete = async () => {
-    if (!deleteId) return;
+    if (!deleteId || !db) return;
     setDeleting(true);
     try {
-      const res = await fetchWithAuth(`/api/media/${deleteId}`, { method: 'DELETE' });
-      if (res.ok) {
-        toast({ title: 'Berhasil', description: 'Media berhasil dihapus.' });
-        setMedia((prev) => prev.filter((m) => m.id !== deleteId));
-      } else {
-        toast({ title: 'Gagal', description: 'Gagal menghapus media.', variant: 'destructive' });
-      }
-    } catch {
-      toast({ title: 'Gagal', description: 'Terjadi kesalahan.', variant: 'destructive' });
+      await deleteDoc(doc(db, 'media', deleteId));
+      toast({ title: 'Berhasil', description: 'Media berhasil dihapus.' });
+      setDeleteId(null);
+    } catch (err) {
+      console.error('Error deleting media:', err);
+      const msg = err instanceof Error ? err.message : 'Gagal menghapus media.';
+      toast({ title: 'Gagal', description: msg, variant: 'destructive' });
     } finally {
       setDeleting(false);
-      setDeleteId(null);
     }
   };
 

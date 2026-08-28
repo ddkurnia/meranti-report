@@ -32,14 +32,24 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
 import { generateSlug } from '@/lib/utils';
+import { db, isFirebaseClientConfigured } from '@/lib/firebase/client';
+import {
+  collection,
+  onSnapshot,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  orderBy,
+  type Unsubscribe,
+} from 'firebase/firestore';
 import { Plus, Pencil, Trash2, Loader2, FolderOpen } from 'lucide-react';
 import type { Category, CategoryFormData } from '@/types';
 
 export default function AdminKategoriPage() {
   const { toast } = useToast();
-  const { fetchWithAuth } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -53,24 +63,46 @@ export default function AdminKategoriPage() {
   const [formDescription, setFormDescription] = useState('');
   const [formOrder, setFormOrder] = useState(0);
 
-  const fetchCategories = useCallback(async () => {
-    setLoading(true);
+  // Realtime listener for categories
+  useEffect(() => {
+    if (!isFirebaseClientConfigured || !db) {
+      setLoading(false);
+      return;
+    }
+
+    const q = query(collection(db, 'categories'), orderBy('order', 'asc'));
+    let unsubscribe: Unsubscribe;
+
     try {
-      const res = await fetch('/api/categories');
-      if (res.ok) {
-        const data = await res.json();
-        setCategories(data.data || []);
-      }
+      unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const items = snapshot.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+          })) as Category[];
+          setCategories(items);
+          setLoading(false);
+        },
+        (err) => {
+          console.error('Realtime categories error:', err);
+          toast({
+            title: 'Error',
+            description: 'Gagal memuat kategori: ' + err.message,
+            variant: 'destructive',
+          });
+          setLoading(false);
+        }
+      );
     } catch (err) {
-      console.error('Failed to fetch categories:', err);
-    } finally {
+      console.error('Failed to setup categories listener:', err);
       setLoading(false);
     }
-  }, []);
 
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [toast]);
 
   const openCreateDialog = () => {
     setEditingId(null);
@@ -86,7 +118,7 @@ export default function AdminKategoriPage() {
     setFormName(cat.name);
     setFormSlug(cat.slug);
     setFormDescription(cat.description || '');
-    setFormOrder(cat.order);
+    setFormOrder(cat.order || 0);
     setDialogOpen(true);
   };
 
@@ -96,55 +128,64 @@ export default function AdminKategoriPage() {
       return;
     }
 
+    if (!db) {
+      toast({ title: 'Gagal', description: 'Firebase tidak tersedia.', variant: 'destructive' });
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const payload: CategoryFormData = {
-        name: formName.trim(),
-        slug: formSlug.trim() || generateSlug(formName),
-        description: formDescription.trim() || undefined,
-        order: formOrder,
-      };
+      const categorySlug = formSlug.trim() || generateSlug(formName);
+      const now = new Date().toISOString();
 
-      const url = editingId ? `/api/categories/${editingId}` : '/api/categories';
-      const method = editingId ? 'PUT' : 'POST';
-
-      const res = await fetchWithAuth(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (res.ok) {
-        toast({ title: 'Berhasil', description: editingId ? 'Kategori berhasil diperbarui.' : 'Kategori berhasil ditambahkan.' });
-        setDialogOpen(false);
-        fetchCategories();
+      if (editingId) {
+        // Update existing category
+        await updateDoc(doc(db, 'categories', editingId), {
+          name: formName.trim(),
+          slug: categorySlug,
+          description: formDescription.trim() || null,
+          order: formOrder,
+          updatedAt: now,
+        });
+        toast({ title: 'Berhasil', description: 'Kategori berhasil diperbarui.' });
       } else {
-        const data = await res.json().catch(() => ({}));
-        toast({ title: 'Gagal', description: data.error || 'Gagal menyimpan kategori.', variant: 'destructive' });
+        // Create new category
+        await addDoc(collection(db, 'categories'), {
+          name: formName.trim(),
+          slug: categorySlug,
+          description: formDescription.trim() || null,
+          parentId: null,
+          order: formOrder,
+          articleCount: 0,
+          createdAt: now,
+          updatedAt: now,
+        });
+        toast({ title: 'Berhasil', description: 'Kategori berhasil ditambahkan.' });
       }
-    } catch {
-      toast({ title: 'Gagal', description: 'Terjadi kesalahan.', variant: 'destructive' });
+
+      setDialogOpen(false);
+    } catch (err) {
+      console.error('Error saving category:', err);
+      const msg = err instanceof Error ? err.message : 'Gagal menyimpan kategori.';
+      toast({ title: 'Gagal', description: msg, variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async () => {
-    if (!deleteId) return;
+    if (!deleteId || !db) return;
     setSubmitting(true);
     try {
-      const res = await fetchWithAuth(`/api/categories/${deleteId}`, { method: 'DELETE' });
-      if (res.ok) {
-        toast({ title: 'Berhasil', description: 'Kategori berhasil dihapus.' });
-        setCategories((prev) => prev.filter((c) => c.id !== deleteId));
-      } else {
-        toast({ title: 'Gagal', description: 'Gagal menghapus kategori.', variant: 'destructive' });
-      }
-    } catch {
-      toast({ title: 'Gagal', description: 'Terjadi kesalahan.', variant: 'destructive' });
+      await deleteDoc(doc(db, 'categories', deleteId));
+      toast({ title: 'Berhasil', description: 'Kategori berhasil dihapus.' });
+      setDeleteId(null);
+    } catch (err) {
+      console.error('Error deleting category:', err);
+      const msg = err instanceof Error ? err.message : 'Gagal menghapus kategori.';
+      toast({ title: 'Gagal', description: msg, variant: 'destructive' });
     } finally {
       setSubmitting(false);
-      setDeleteId(null);
     }
   };
 
@@ -197,8 +238,8 @@ export default function AdminKategoriPage() {
                   <TableRow key={cat.id}>
                     <TableCell className="font-medium">{cat.name}</TableCell>
                     <TableCell className="text-muted-foreground">{cat.slug}</TableCell>
-                    <TableCell className="text-center">{cat.articleCount}</TableCell>
-                    <TableCell className="text-center">{cat.order}</TableCell>
+                    <TableCell className="text-center">{cat.articleCount || 0}</TableCell>
+                    <TableCell className="text-center">{cat.order || 0}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Button

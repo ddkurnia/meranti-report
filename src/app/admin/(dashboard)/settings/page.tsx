@@ -17,8 +17,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
+import { db, isFirebaseClientConfigured } from '@/lib/firebase/client';
 import { Loader2, Save } from 'lucide-react';
+import {
+  doc,
+  onSnapshot,
+  setDoc,
+  type Unsubscribe,
+} from 'firebase/firestore';
 import type { SiteSettings } from '@/types';
 
 const defaultSettings: SiteSettings = {
@@ -75,45 +81,123 @@ const defaultSettings: SiteSettings = {
 
 export default function AdminSettingsPage() {
   const { toast } = useToast();
-  const { fetchWithAuth } = useAuth();
   const [settings, setSettings] = useState<SiteSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
 
+  // Realtime listener for the settings/site document
   useEffect(() => {
-    async function fetchSettings() {
-      try {
-        const res = await fetch('/api/settings');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.data) {
-            setSettings(data.data);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to fetch settings:', err);
-      } finally {
-        setLoading(false);
-      }
+    if (!isFirebaseClientConfigured) {
+      toast({
+        title: 'Firebase Tidak Dikonfigurasi',
+        description: 'Firebase client tidak dikonfigurasi. Periksa environment variables.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+      return;
     }
-    fetchSettings();
-  }, []);
+
+    const settingsRef = doc(db, 'settings', 'site');
+    let unsubscribe: Unsubscribe;
+
+    try {
+      unsubscribe = onSnapshot(
+        settingsRef,
+        (snapshot) => {
+          if (snapshot.exists()) {
+            const data = snapshot.data();
+            setSettings({
+              general: {
+                siteName: data.general?.siteName ?? defaultSettings.general.siteName,
+                tagline: data.general?.tagline ?? defaultSettings.general.tagline,
+                description: data.general?.description ?? defaultSettings.general.description,
+                email: data.general?.email ?? defaultSettings.general.email,
+                phone: data.general?.phone ?? defaultSettings.general.phone,
+                address: data.general?.address ?? defaultSettings.general.address,
+                logo: data.general?.logo,
+                favicon: data.general?.favicon,
+              },
+              appearance: {
+                primaryColor: data.appearance?.primaryColor ?? defaultSettings.appearance.primaryColor,
+                accentColor: data.appearance?.accentColor ?? defaultSettings.appearance.accentColor,
+                darkMode: data.appearance?.darkMode ?? defaultSettings.appearance.darkMode,
+                layout: data.appearance?.layout ?? defaultSettings.appearance.layout,
+              },
+              homepage: {
+                latestNewsCount: data.homepage?.latestNewsCount ?? defaultSettings.homepage.latestNewsCount,
+                popularNewsCount: data.homepage?.popularNewsCount ?? defaultSettings.homepage.popularNewsCount,
+                showBreakingNews: data.homepage?.showBreakingNews ?? defaultSettings.homepage.showBreakingNews,
+                showGallery: data.homepage?.showGallery ?? defaultSettings.homepage.showGallery,
+                showVideo: data.homepage?.showVideo ?? defaultSettings.homepage.showVideo,
+                showNewsletter: data.homepage?.showNewsletter ?? defaultSettings.homepage.showNewsletter,
+              },
+              socialMedia: {
+                facebook: data.socialMedia?.facebook,
+                instagram: data.socialMedia?.instagram,
+                tiktok: data.socialMedia?.tiktok,
+                youtube: data.socialMedia?.youtube,
+                whatsapp: data.socialMedia?.whatsapp,
+                twitter: data.socialMedia?.twitter,
+              },
+              seo: {
+                defaultTitle: data.seo?.defaultTitle ?? defaultSettings.seo.defaultTitle,
+                metaDescription: data.seo?.metaDescription ?? defaultSettings.seo.metaDescription,
+                ogImage: data.seo?.ogImage,
+                googleVerification: data.seo?.googleVerification,
+                robotsConfig: data.seo?.robotsConfig ?? defaultSettings.seo.robotsConfig,
+              },
+              advertisement: {
+                headerAd: { ...defaultSettings.advertisement.headerAd, ...data.advertisement?.headerAd },
+                homepageAd: { ...defaultSettings.advertisement.homepageAd, ...data.advertisement?.homepageAd },
+                articleAd: { ...defaultSettings.advertisement.articleAd, ...data.advertisement?.articleAd },
+                sidebarAd: { ...defaultSettings.advertisement.sidebarAd, ...data.advertisement?.sidebarAd },
+              },
+              comments: {
+                enabled: data.comments?.enabled ?? defaultSettings.comments.enabled,
+                requireApproval: data.comments?.requireApproval ?? defaultSettings.comments.requireApproval,
+              },
+            });
+          }
+          setLoading(false);
+        },
+        (error) => {
+          console.error('Settings onSnapshot error:', error);
+          toast({
+            title: 'Gagal Memuat',
+            description: 'Gagal mendengarkan perubahan pengaturan. Coba muat ulang halaman.',
+            variant: 'destructive',
+          });
+          setLoading(false);
+        }
+      );
+    } catch (err) {
+      console.error('Failed to setup settings listener:', err);
+      toast({
+        title: 'Gagal Memuat',
+        description: 'Terjadi kesalahan saat menghubungkan ke Firebase.',
+        variant: 'destructive',
+      });
+      setLoading(false);
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [toast]);
 
   const saveSection = async (section: string) => {
+    if (!isFirebaseClientConfigured) {
+      toast({ title: 'Gagal', description: 'Firebase tidak dikonfigurasi.', variant: 'destructive' });
+      return;
+    }
     setSaving(section);
     try {
-      const res = await fetchWithAuth('/api/settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(settings),
-      });
-      if (res.ok) {
-        toast({ title: 'Berhasil', description: 'Pengaturan berhasil disimpan.' });
-      } else {
-        toast({ title: 'Gagal', description: 'Gagal menyimpan pengaturan.', variant: 'destructive' });
-      }
-    } catch {
-      toast({ title: 'Gagal', description: 'Terjadi kesalahan.', variant: 'destructive' });
+      const settingsRef = doc(db, 'settings', 'site');
+      await setDoc(settingsRef, settings, { merge: true });
+      toast({ title: 'Berhasil', description: 'Pengaturan berhasil disimpan.' });
+    } catch (err) {
+      console.error('Failed to save settings:', err);
+      toast({ title: 'Gagal', description: 'Gagal menyimpan pengaturan.', variant: 'destructive' });
     } finally {
       setSaving(null);
     }

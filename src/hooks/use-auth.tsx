@@ -76,17 +76,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchWithAuth = useCallback(async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
     if (!firebaseUser) {
+      console.warn('[fetchWithAuth] No firebaseUser, sending unauthenticated request');
       return fetch(input, init);
     }
     try {
-      const token = await firebaseUser.getIdToken();
+      const token = await firebaseUser.getIdToken(true); // forceRefresh to avoid stale tokens
+      console.log('[fetchWithAuth] Got token, length:', token.length);
       const headers = new Headers(init?.headers);
       headers.set('Authorization', `Bearer ${token}`);
       if (!headers.has('Content-Type') && !(init?.body instanceof FormData)) {
         headers.set('Content-Type', 'application/json');
       }
       return fetch(input, { ...init, headers });
-    } catch {
+    } catch (err) {
+      console.error('[fetchWithAuth] getIdToken failed:', err);
+      // Still try the request without auth rather than silently failing
       return fetch(input, init);
     }
   }, [firebaseUser]);

@@ -81,22 +81,35 @@ export function unauthorizedResponse(): NextResponse {
 export async function verifyIdToken(token: string): Promise<string | null> {
   try {
     const { adminAuth } = await import('@/lib/firebase/admin');
-    if (!adminAuth) return null;
+    if (!adminAuth) {
+      console.error('[verifyIdToken] adminAuth is null - Firebase Admin SDK not initialized');
+      return null;
+    }
     const decoded = await adminAuth.verifyIdToken(token);
+    console.log('[verifyIdToken] Token verified for uid:', decoded.uid);
     return decoded.uid;
-  } catch {
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('[verifyIdToken] Token verification failed:', msg);
     return null;
   }
 }
 
-// Verify auth from request
+// Verify auth from request - returns uid string or null
 export async function getAuthUser(request: NextRequest): Promise<string | null> {
   const authHeader = request.headers.get('Authorization');
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    console.warn('[getAuthUser] No Authorization header or not Bearer token');
+    return null;
+  }
 
   const token = authHeader.split('Bearer ')[1];
-  if (!token) return null;
+  if (!token) {
+    console.warn('[getAuthUser] Empty token after Bearer prefix');
+    return null;
+  }
 
+  console.log('[getAuthUser] Verifying token, length:', token.length);
   const uid = await verifyIdToken(token);
   return uid;
 }
@@ -107,10 +120,15 @@ export async function getUserRole(uid: string): Promise<string | null> {
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return null;
     const userDoc = await adminDb.collection('users').doc(uid).get();
-    if (!userDoc.exists) return null;
+    if (!userDoc.exists) {
+      console.warn('[getUserRole] No user document found for uid:', uid);
+      return null;
+    }
     const data = userDoc.data();
-    return (data as Record<string, unknown>)?.role as string || null;
-  } catch {
+    const role = (data as Record<string, unknown>)?.role as string || null;
+    return role;
+  } catch (err) {
+    console.error('[getUserRole] Error fetching user role:', err);
     return null;
   }
 }

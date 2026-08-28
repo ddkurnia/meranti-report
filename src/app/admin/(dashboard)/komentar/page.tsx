@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Table,
@@ -26,8 +26,18 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
 import { truncateText, formatDate } from '@/lib/utils';
+import { db, isFirebaseClientConfigured } from '@/lib/firebase/client';
+import {
+  collection,
+  onSnapshot,
+  updateDoc,
+  deleteDoc,
+  doc,
+  query,
+  orderBy,
+  type Unsubscribe,
+} from 'firebase/firestore';
 import {
   MoreHorizontal,
   CheckCircle2,
@@ -40,62 +50,91 @@ import type { Comment, CommentStatus } from '@/types';
 
 export default function AdminKomentarPage() {
   const { toast } = useToast();
-  const { fetchWithAuth } = useAuth();
-  const [comments, setComments] = useState<Comment[]>([]);
+  const [allComments, setAllComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const fetchComments = useCallback(async () => {
-    setLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (statusFilter !== 'all') params.set('status', statusFilter);
+  // Realtime listener for comments
+  useEffect(() => {
+    if (!isFirebaseClientConfigured || !db) {
+      setLoading(false);
+      return;
+    }
 
-      const res = await fetch(`/api/comments?${params.toString()}`);
-      if (res.ok) {
-        const data = await res.json();
-        setComments(data.data || []);
-      }
+    const q = query(collection(db, 'comments'), orderBy('createdAt', 'desc'));
+    let unsubscribe: Unsubscribe;
+
+    try {
+      unsubscribe = onSnapshot(
+        q,
+        (snapshot) => {
+          const items = snapshot.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              ...data,
+              createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || '',
+            } as Comment;
+          });
+          setAllComments(items);
+          setLoading(false);
+        },
+        (err) => {
+          console.error('Realtime comments error:', err);
+          toast({
+            title: 'Error',
+            description: 'Gagal memuat komentar: ' + err.message,
+            variant: 'destructive',
+          });
+          setLoading(false);
+        }
+      );
     } catch (err) {
-      console.error('Failed to fetch comments:', err);
-    } finally {
+      console.error('Failed to setup comments listener:', err);
       setLoading(false);
     }
-  }, [statusFilter]);
 
-  useEffect(() => {
-    fetchComments();
-  }, [fetchComments]);
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [toast]);
+
+  // Client-side filtering
+  const comments = useMemo(() => {
+    if (statusFilter === 'all') return allComments;
+    return allComments.filter((c) => c.status === statusFilter);
+  }, [allComments, statusFilter]);
 
   const updateStatus = async (id: string, newStatus: CommentStatus) => {
+    if (!db) {
+      toast({ title: 'Gagal', description: 'Firebase tidak tersedia.', variant: 'destructive' });
+      return;
+    }
     try {
-      const res = await fetchWithAuth(`/api/comments/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus }),
+      await updateDoc(doc(db, 'comments', id), {
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
       });
-      if (res.ok) {
-        toast({ title: 'Berhasil', description: `Status komentar diperbarui ke ${newStatus}.` });
-        fetchComments();
-      } else {
-        toast({ title: 'Gagal', description: 'Gagal memperbarui komentar.', variant: 'destructive' });
-      }
-    } catch {
-      toast({ title: 'Gagal', description: 'Terjadi kesalahan.', variant: 'destructive' });
+      toast({ title: 'Berhasil', description: `Status komentar diperbarui ke ${newStatus}.` });
+    } catch (err) {
+      console.error('Error updating comment:', err);
+      const msg = err instanceof Error ? err.message : 'Gagal memperbarui komentar.';
+      toast({ title: 'Gagal', description: msg, variant: 'destructive' });
     }
   };
 
   const handleDelete = async (id: string) => {
+    if (!db) {
+      toast({ title: 'Gagal', description: 'Firebase tidak tersedia.', variant: 'destructive' });
+      return;
+    }
     try {
-      const res = await fetchWithAuth(`/api/comments/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        toast({ title: 'Berhasil', description: 'Komentar berhasil dihapus.' });
-        setComments((prev) => prev.filter((c) => c.id !== id));
-      } else {
-        toast({ title: 'Gagal', description: 'Gagal menghapus komentar.', variant: 'destructive' });
-      }
-    } catch {
-      toast({ title: 'Gagal', description: 'Terjadi kesalahan.', variant: 'destructive' });
+      await deleteDoc(doc(db, 'comments', id));
+      toast({ title: 'Berhasil', description: 'Komentar berhasil dihapus.' });
+    } catch (err) {
+      console.error('Error deleting comment:', err);
+      const msg = err instanceof Error ? err.message : 'Gagal menghapus komentar.';
+      toast({ title: 'Gagal', description: msg, variant: 'destructive' });
     }
   };
 

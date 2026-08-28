@@ -24,8 +24,16 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
 import { generateSlug } from '@/lib/utils';
+import { db, isFirebaseClientConfigured } from '@/lib/firebase/client';
+import {
+  collection,
+  onSnapshot,
+  addDoc,
+  query,
+  orderBy,
+  type Unsubscribe,
+} from 'firebase/firestore';
 import type { Category, ArticleStatus } from '@/types';
 import {
   ArrowLeft,
@@ -51,7 +59,7 @@ import {
 export default function NewArticlePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user, fetchWithAuth } = useAuth();
+
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Form state
@@ -106,22 +114,25 @@ export default function NewArticlePage() {
     },
   });
 
-  // Fetch categories
+  // Fetch categories via realtime
   useEffect(() => {
-    async function fetchCategories() {
-      try {
-        const res = await fetch('/api/categories');
-        if (res.ok) {
-          const data = await res.json();
-          setCategories(data.data || []);
-        }
-      } catch (err) {
-        console.error('Failed to fetch categories:', err);
-      } finally {
-        setLoadingCategories(false);
-      }
+    if (!isFirebaseClientConfigured || !db) {
+      setLoadingCategories(false);
+      return;
     }
-    fetchCategories();
+    const q = query(collection(db, 'categories'), orderBy('order', 'asc'));
+    let unsubscribe: Unsubscribe;
+    try {
+      unsubscribe = onSnapshot(q, (snapshot) => {
+        const items = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Category[];
+        setCategories(items);
+        setLoadingCategories(false);
+      });
+    } catch (err) {
+      console.error('Failed to setup categories listener:', err);
+      setLoadingCategories(false);
+    }
+    return () => { if (unsubscribe) unsubscribe(); };
   }, []);
 
   // Auto slug generation
@@ -163,47 +174,51 @@ export default function NewArticlePage() {
   // Submit
   const handleSubmit = async (submitStatus: ArticleStatus) => {
     if (!validate()) return;
+    if (!db) {
+      toast({ title: 'Gagal', description: 'Firebase tidak tersedia.', variant: 'destructive' });
+      return;
+    }
     setSubmitting(true);
 
     try {
-      const payload = {
+      const selectedCategory = categories.find((c) => c.id === categoryId);
+      const now = new Date().toISOString();
+
+      const articleData: Record<string, unknown> = {
         title: title.trim(),
         slug: slug.trim(),
-        subheading: subheading.trim() || undefined,
         excerpt: excerpt.trim(),
         content: editor?.getHTML() || '',
-        featuredImage: featuredImage.trim() || undefined,
-        imageCaption: imageCaption.trim() || undefined,
         categoryId,
+        categoryName: selectedCategory?.name || '',
+        categorySlug: selectedCategory?.slug || '',
+        authorId: '',
+        authorName: '',
         tags,
         status: submitStatus,
         featured,
         breaking,
-        seoTitle: seoTitle.trim() || undefined,
-        seoDescription: seoDescription.trim() || undefined,
-        seoKeywords: seoKeywords
-          .split(',')
-          .map((k) => k.trim())
-          .filter(Boolean) || undefined,
-        canonicalUrl: canonicalUrl.trim() || undefined,
-        publishedAt: publishedAt ? new Date(publishedAt).toISOString() : undefined,
+        views: 0,
+        createdAt: now,
+        updatedAt: now,
       };
 
-      const res = await fetchWithAuth('/api/articles', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      if (subheading.trim()) articleData.subheading = subheading.trim();
+      if (featuredImage.trim()) articleData.featuredImage = featuredImage.trim();
+      if (imageCaption.trim()) articleData.imageCaption = imageCaption.trim();
+      if (seoTitle.trim()) articleData.seoTitle = seoTitle.trim();
+      if (seoDescription.trim()) articleData.seoDescription = seoDescription.trim();
+      if (seoKeywords.trim()) articleData.seoKeywords = seoKeywords.split(',').map((k) => k.trim()).filter(Boolean);
+      if (canonicalUrl.trim()) articleData.canonicalUrl = canonicalUrl.trim();
+      if (submitStatus === 'published') articleData.publishedAt = now;
 
-      if (res.ok) {
-        toast({ title: 'Berhasil', description: `Berita berhasil ${submitStatus === 'published' ? 'dipublish' : 'disimpan sebagai draft'}.` });
-        router.push('/admin/berita');
-      } else {
-        const data = await res.json().catch(() => ({}));
-        toast({ title: 'Gagal', description: data.error || 'Gagal menyimpan berita.', variant: 'destructive' });
-      }
-    } catch {
-      toast({ title: 'Gagal', description: 'Terjadi kesalahan jaringan.', variant: 'destructive' });
+      await addDoc(collection(db, 'articles'), articleData);
+      toast({ title: 'Berhasil', description: `Berita berhasil ${submitStatus === 'published' ? 'dipublish' : 'disimpan sebagai draft'}.` });
+      router.push('/admin/berita');
+    } catch (err) {
+      console.error('Error creating article:', err);
+      const msg = err instanceof Error ? err.message : 'Gagal menyimpan berita.';
+      toast({ title: 'Gagal', description: msg, variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
