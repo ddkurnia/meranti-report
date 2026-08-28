@@ -16,22 +16,54 @@ export function generateSlug(text: string): string {
   });
 }
 
-export function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return '';
-  const d = typeof date === 'string' ? new Date(date) : date;
+/**
+ * Convert any date-like value to a JavaScript Date.
+ * Handles: ISO strings, native Date, Firestore Timestamp (.toDate()),
+ * serialized Timestamp {seconds, nanoseconds}, and null/undefined.
+ */
+export function toDate(value: Date | string | null | undefined | { toDate?: () => Date; seconds?: number; nanoseconds?: number }): Date | null {
+  if (!value) return null;
+  if (value instanceof Date) return value;
+  if (typeof value === 'string') {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  // Firestore Timestamp object (has .toDate method)
+  if (typeof value === 'object' && 'toDate' in value && typeof value.toDate === 'function') {
+    try { return value.toDate(); } catch { return null; }
+  }
+  // Serialized Firestore Timestamp {seconds, nanoseconds}
+  if (typeof value === 'object' && 'seconds' in value) {
+    const ms = ((value.seconds || 0) * 1000) + Math.floor((value.nanoseconds || 0) / 1000000);
+    return new Date(ms);
+  }
+  return null;
+}
+
+export function formatDate(date: Date | string | null | undefined | any): string {
+  const d = toDate(date);
+  if (!d) return '';
   return format(d, 'dd MMMM yyyy, HH:mm', { locale: id });
 }
 
-export function formatDateShort(date: Date | string | null | undefined): string {
-  if (!date) return '';
-  const d = typeof date === 'string' ? new Date(date) : date;
+export function formatDateShort(date: Date | string | null | undefined | any): string {
+  const d = toDate(date);
+  if (!d) return '';
   return format(d, 'dd MMM yyyy', { locale: id });
 }
 
-export function formatRelativeDate(date: Date | string | null | undefined): string {
-  if (!date) return '';
-  const d = typeof date === 'string' ? new Date(date) : date;
+export function formatRelativeDate(date: Date | string | null | undefined | any): string {
+  const d = toDate(date);
+  if (!d) return '';
   return formatDistanceToNow(d, { addSuffix: true, locale: id });
+}
+
+/**
+ * Convert any date-like value to an ISO string. Safe for JSON-LD, API responses, etc.
+ */
+export function toISOString(date: Date | string | null | undefined | any): string | null {
+  const d = toDate(date);
+  return d ? d.toISOString() : null;
 }
 
 export function formatNumber(num: number): string {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseConfigured, handleCors, paginatedResponse, successResponse, errorResponse, parsePagination, getAuthUser, generateSlug } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, paginatedResponse, successResponse, errorResponse, parsePagination, getAuthUser, generateSlug, normalizeDocDates } from '@/lib/api-helpers';
 import type { Article } from '@/types';
 
 export async function OPTIONS(request: NextRequest) {
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);
       const allSnap = await adminDb.collection('articles').get();
-      const allArticles = allSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const allArticles = allSnap.docs.map((d) => normalizeDocDates({ id: d.id, ...d.data() }));
 
       const published = allArticles.filter((d: Record<string, unknown>) => d.status === 'published');
       const drafts = allArticles.filter((d: Record<string, unknown>) => d.status === 'draft');
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
       const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);
       const snap = await adminDb.collection('articles').get();
-      let articles = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      let articles = snap.docs.map((d) => normalizeDocDates({ id: d.id, ...d.data() }))
         .filter((a: Record<string, unknown>) => a.status === 'published');
 
       const catRef = categoryId || category;
@@ -122,7 +122,7 @@ export async function GET(request: NextRequest) {
       const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);
       const snap = await adminDb.collection('articles').get();
-      const articles = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      const articles = snap.docs.map((d) => normalizeDocDates({ id: d.id, ...d.data() }))
         .filter((a: Record<string, unknown>) => a.breaking === true && a.status === 'published')
         .sort((a: Record<string, unknown>, b: Record<string, unknown>) => ((b.publishedAt as string) || '').localeCompare((a.publishedAt as string) || ''));
 
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
       const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);
       const snap = await adminDb.collection('articles').get();
-      const articles = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      const articles = snap.docs.map((d) => normalizeDocDates({ id: d.id, ...d.data() }))
         .filter((a: Record<string, unknown>) => a.featured === true && a.status === 'published')
         .sort((a: Record<string, unknown>, b: Record<string, unknown>) => ((b.publishedAt as string) || '').localeCompare((a.publishedAt as string) || ''));
 
@@ -165,7 +165,7 @@ export async function GET(request: NextRequest) {
         snap = await adminDb.collection('articles').get();
       }
 
-      let articles = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      let articles = snap.docs.map((d) => normalizeDocDates({ id: d.id, ...d.data() }));
 
       // Filter published for public requests
       if (!isAdminRequest || !status) {
@@ -287,7 +287,7 @@ export async function POST(request: NextRequest) {
     if (status === 'published') articleData.publishedAt = new Date().toISOString();
 
     const docRef = await adminDb.collection('articles').add(articleData);
-    const createdArticle = { id: docRef.id, ...articleData };
+    const createdArticle = normalizeDocDates({ id: docRef.id, ...articleData });
 
     return NextResponse.json({ success: true, data: createdArticle }, { status: 201 });
   } catch (error) {

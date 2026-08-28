@@ -147,16 +147,42 @@ export async function requireRole(
   return { authorized: true, userId: uid, role };
 }
 
-// Convert Firestore timestamp to Date
+// Convert any date-like value to a Date (server-side)
+// Handles: ISO strings, native Date, Firestore Timestamp (.toDate()),
+// serialized Timestamp {seconds, nanoseconds}, epoch numbers.
 export function toDate(value: unknown): Date | undefined {
   if (!value) return undefined;
   if (value instanceof Date) return value;
-  if (typeof value === 'object' && value !== null && 'toDate' in value) {
-    return (value as { toDate: () => Date }).toDate();
+  if (typeof value === 'string') {
+    const d = new Date(value);
+    return isNaN(d.getTime()) ? undefined : d;
   }
-  if (typeof value === 'string') return new Date(value);
   if (typeof value === 'number') return new Date(value);
+  if (typeof value === 'object' && value !== null) {
+    // Firestore Timestamp object
+    if ('toDate' in value && typeof (value as any).toDate === 'function') {
+      try { return (value as any).toDate(); } catch { return undefined; }
+    }
+    // Serialized Timestamp {seconds, nanoseconds}
+    if ('seconds' in value) {
+      const ms = ((value as any).seconds || 0) * 1000 + Math.floor(((value as any).nanoseconds || 0) / 1000000);
+      return new Date(ms);
+    }
+  }
   return undefined;
+}
+
+/** Normalize all known date fields in a document to ISO strings */
+const DATE_FIELDS = ['createdAt', 'updatedAt', 'publishedAt', 'deletedAt'];
+export function normalizeDocDates<T = Record<string, any>>(doc: Record<string, any>): T {
+  const out = { ...doc };
+  for (const field of DATE_FIELDS) {
+    if (out[field] != null) {
+      const d = toDate(out[field]);
+      out[field] = d ? d.toISOString() : null;
+    }
+  }
+  return out as T;
 }
 
 // Generate slug from string

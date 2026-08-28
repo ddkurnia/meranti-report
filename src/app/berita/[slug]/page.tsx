@@ -17,7 +17,7 @@ import { ShareButtons } from '@/components/news/share-buttons';
 import { ViewCounter } from '@/components/news/view-counter';
 import { RelatedNews } from '@/components/news/related-news';
 import { NewsletterSection } from '@/components/news/newsletter-section';
-import { formatDate, getReadingTime } from '@/lib/utils';
+import { formatDate, getReadingTime, toISOString } from '@/lib/utils';
 import type { Article } from '@/types';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://merantireport.com';
@@ -92,8 +92,8 @@ export default function ArticlePage() {
       headline: article.title,
       description: article.excerpt,
       image: article.featuredImage,
-      datePublished: article.publishedAt?.toISOString(),
-      dateModified: article.updatedAt?.toISOString(),
+      datePublished: toISOString(article.publishedAt),
+      dateModified: toISOString(article.updatedAt),
       author: {
         '@type': 'Person',
         name: article.authorName,

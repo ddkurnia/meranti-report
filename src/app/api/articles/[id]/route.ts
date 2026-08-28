@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseConfigured, handleCors, successResponse, errorResponse, getAuthUser, generateSlug, requireRole } from '@/lib/api-helpers';
+import { isFirebaseConfigured, handleCors, successResponse, errorResponse, getAuthUser, generateSlug, requireRole, normalizeDocDates } from '@/lib/api-helpers';
 
 export async function OPTIONS(request: NextRequest) {
   const cors = handleCors(request);
@@ -27,7 +27,7 @@ export async function GET(
     const doc = await adminDb.collection('articles').doc(id).get();
     if (!doc.exists) return errorResponse('Article not found', 404);
 
-    const articleData = { id: doc.id, ...(doc.data() as any) };
+    const articleData = normalizeDocDates({ id: doc.id, ...(doc.data() as any) });
 
     // For public: only return if published
     if (articleData.status !== 'published') {
@@ -88,7 +88,7 @@ export async function PUT(
     await adminDb.collection('articles').doc(id).update(updateData);
     const updatedDoc = await adminDb.collection('articles').doc(id).get();
 
-    return successResponse({ id: updatedDoc.id, ...updatedDoc.data() });
+    return successResponse(normalizeDocDates({ id: updatedDoc.id, ...updatedDoc.data() }));
   } catch (error) {
     console.error('Error updating article:', error);
     return errorResponse('Failed to update article');

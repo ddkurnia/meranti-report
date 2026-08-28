@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { toISOString } from '@/lib/utils';
 import type { Article, Category, SiteSettings } from '@/types';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://merantireport.com';
@@ -22,8 +23,8 @@ export function generateArticleMetadata(article: Article): Metadata {
       url,
       siteName: SITE_NAME,
       type: 'article',
-      publishedTime: article.publishedAt?.toISOString(),
-      modifiedTime: article.updatedAt?.toISOString(),
+      publishedTime: toISOString(article.publishedAt) ?? undefined,
+      modifiedTime: toISOString(article.updatedAt) ?? undefined,
       authors: [article.authorName],
       tags: article.tags,
       images: [
@@ -121,8 +122,8 @@ export function generateNewsArticleSchema(article: Article) {
     headline: article.title,
     description: article.excerpt,
     image: article.featuredImage,
-    datePublished: article.publishedAt?.toISOString(),
-    dateModified: article.updatedAt?.toISOString(),
+    datePublished: toISOString(article.publishedAt),
+    dateModified: toISOString(article.updatedAt),
     author: {
       '@type': 'Person',
       name: article.authorName,

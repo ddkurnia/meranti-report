@@ -12,7 +12,21 @@ import {
   type Unsubscribe,
   type QueryConstraint,
 } from 'firebase/firestore';
+import { toDate } from '@/lib/utils';
 import type { Article, Category, Author } from '@/types';
+
+/** Normalize Firestore date fields to ISO strings in an object */
+function normalizeDates<T>(doc: Record<string, any>): T {
+  const dateFields = ['createdAt', 'updatedAt', 'publishedAt', 'deletedAt'];
+  const normalized = { ...doc };
+  for (const field of dateFields) {
+    if (normalized[field] != null) {
+      const d = toDate(normalized[field]);
+      normalized[field] = d ? d.toISOString() : null;
+    }
+  }
+  return normalized as T;
+}
 
 /**
  * Generic hook for realtime Firestore collection listener with API fallback.
@@ -93,10 +107,9 @@ function useRealtimeCollection<T>(
         (snapshot) => {
           snapshotReceived = true;
           clearTimeout(fallbackTimer);
-          const items = snapshot.docs.map((doc) => ({
-            id: doc.id,
-            ...doc.data(),
-          })) as T[];
+          const items = snapshot.docs.map((doc) =>
+            normalizeDates<T>({ id: doc.id, ...doc.data() })
+          );
           setData(items);
           setLoading(false);
           setError(null);
@@ -229,7 +242,7 @@ export function useRealtimeDashboardStats() {
     const unsubscribe = onSnapshot(
       colRef,
       (snapshot) => {
-        const all = snapshot.docs.map((d) => ({ id: d.id, ...d.data() })) as Article[];
+        const all = snapshot.docs.map((d) => normalizeDates<Article>({ id: d.id, ...d.data() }));
         const published = all.filter((a) => a.status === 'published');
         const drafts = all.filter((a) => a.status === 'draft');
         const today = new Date();
