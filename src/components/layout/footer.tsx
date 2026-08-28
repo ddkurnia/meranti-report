@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRealtimeCategories } from '@/hooks/use-realtime';
 import { Facebook, Instagram, Youtube, Twitter, Mail, Phone, MapPin } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import type { Category } from '@/types';
 
 const quickLinks = [
   { label: 'Beranda', href: '/' },
@@ -20,22 +19,7 @@ const legalLinks = [
 ];
 
 export function Footer() {
-  const [categories, setCategories] = useState<Category[]>([]);
-
-  useEffect(() => {
-    async function fetchCategories() {
-      try {
-        const res = await fetch('/api/categories');
-        if (res.ok) {
-          const data = await res.json();
-          setCategories(data.data || data || []);
-        }
-      } catch {
-        // Silently fail
-      }
-    }
-    fetchCategories();
-  }, []);
+  const { categories } = useRealtimeCategories();
 
   return (
     <footer className="bg-[#1a2332] text-gray-300 mt-auto">

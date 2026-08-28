@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback, useRef, useSyncExternalStore } from '
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
+import { useRealtimeCategories } from '@/hooks/use-realtime';
 import {
   Menu,
   Search,
@@ -30,6 +31,7 @@ import {
 } from '@/components/ui/sheet';
 import { cn, formatDate } from '@/lib/utils';
 import type { Category } from '@/types';
+// Type kept for reference — categories now come from useRealtimeCategories
 
 const navItems = [
   { label: 'Beranda', href: '/' },
@@ -42,7 +44,7 @@ export function Header() {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme } = useTheme();
-  const [categories, setCategories] = useState<Category[]>([]);
+  const { categories } = useRealtimeCategories();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,21 +56,6 @@ export function Header() {
   const [catDropdownOpen, setCatDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    async function fetchCategories() {
-      try {
-        const res = await fetch('/api/categories');
-        if (res.ok) {
-          const data = await res.json();
-          setCategories(data.data || data || []);
-        }
-      } catch {
-        // Silently fail
-      }
-    }
-    fetchCategories();
-  }, []);
 
   // Close dropdown on click outside
   useEffect(() => {

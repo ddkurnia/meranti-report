@@ -12,7 +12,7 @@ import { NewsGrid } from '@/components/news/news-grid';
 import { NewsCard } from '@/components/news/news-card';
 import { NewsletterSection } from '@/components/news/newsletter-section';
 import { AdSlotRenderer } from '@/components/ads/ad-banner';
-import { ChevronRight, TrendingUp, Newspaper, ArrowRight, Zap } from 'lucide-react';
+import { ChevronRight, TrendingUp, Newspaper, ArrowRight, Zap, FolderOpen } from 'lucide-react';
 import { useRealtimeArticles, useRealtimeFeaturedArticles, useRealtimeCategories, useRealtimeAds } from '@/hooks/use-realtime';
 import type { Article, Category, AdSlot } from '@/types';
 
@@ -176,9 +176,11 @@ export default function HomePage() {
                               loading="lazy"
                             />
                             <div className="min-w-0">
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 mb-1">
-                                {article.categoryName}
-                              </Badge>
+                              <Link href={`/kategori/${article.categorySlug}`}>
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 mb-1 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
+                                  {article.categoryName}
+                                </Badge>
+                              </Link>
                               <h4 className="text-sm font-semibold leading-snug line-clamp-2 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors">
                                 {article.title}
                               </h4>
@@ -211,6 +213,13 @@ export default function HomePage() {
                       </Link>
                     ))}
                   </div>
+                  <Link
+                    href="/kategori"
+                    className="mt-3 flex items-center justify-center gap-1 text-sm text-red-600 dark:text-red-400 hover:underline"
+                  >
+                    <FolderOpen className="h-3.5 w-3.5" />
+                    Lihat Semua Kategori
+                  </Link>
                 </div>
               )}
 
@@ -220,10 +229,15 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ====== SLOT 8: Mid Page 2 (before More News) ====== */}
+        {/* ====== SLOT 8: Mid Page 2 (before Category Sections) ====== */}
         <div className="mx-auto max-w-7xl px-4 py-4">
           <AdSlotRenderer ads={ads} slotId="slot-8" />
         </div>
+
+        {/* Berita per Kategori — top categories with their latest articles */}
+        {!loading && categories.length > 0 && (
+          <CategorySections categories={categories} articles={realtimeArticles} />
+        )}
 
         {/* More News */}
         {moreArticles.length > 0 && (
@@ -272,9 +286,11 @@ export default function HomePage() {
 function SectionHeader({
   title,
   icon,
+  href,
 }: {
   title: string;
   icon: React.ReactNode;
+  href?: string;
 }) {
   return (
     <div className="flex items-center gap-3 mb-6">
@@ -283,6 +299,68 @@ function SectionHeader({
         <h2 className="text-xl font-bold tracking-tight">{title}</h2>
       </div>
       <div className="flex-1 h-px bg-gray-200 dark:bg-gray-800" />
+      {href && (
+        <Link href={href} className="text-sm text-red-600 dark:text-red-400 hover:underline whitespace-nowrap flex items-center gap-1">
+          Lihat Semua
+          <ChevronRight className="h-3.5 w-3.5" />
+        </Link>
+      )}
     </div>
+  );
+}
+
+/** Shows top categories with their 3 most recent articles */
+function CategorySections({
+  categories,
+  articles,
+}: {
+  categories: Category[];
+  articles: Article[];
+}) {
+  // Get top 4 categories by article count (that actually have articles)
+  const topCategories = categories
+    .filter((c) => (c.articleCount || 0) > 0)
+    .sort((a, b) => (b.articleCount || 0) - (a.articleCount || 0))
+    .slice(0, 4);
+
+  if (topCategories.length === 0) return null;
+
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-8 md:py-10">
+      <SectionHeader
+        title="Berita per Kategori"
+        icon={<FolderOpen className="h-5 w-5" />}
+        href="/kategori"
+      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {topCategories.map((cat) => {
+          const catArticles = articles
+            .filter((a) => a.categoryId === cat.id)
+            .slice(0, 3);
+          if (catArticles.length === 0) return null;
+
+          return (
+            <div key={cat.id} className="space-y-3">
+              <Link
+                href={`/kategori/${cat.slug}`}
+                className="inline-flex items-center gap-2 text-base font-bold hover:text-red-600 dark:hover:text-red-400 transition-colors"
+              >
+                <span className="w-1 h-5 bg-red-600 rounded-full" />
+                {cat.name}
+                <Badge variant="secondary" className="font-mono text-xs ml-1">
+                  {cat.articleCount || 0}
+                </Badge>
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+              </Link>
+              <div className="space-y-1">
+                {catArticles.map((article) => (
+                  <NewsCard key={article.id} article={article} variant="horizontal" />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }

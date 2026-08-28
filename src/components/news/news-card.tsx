@@ -32,12 +32,14 @@ export function NewsCard({ article, variant = 'default' }: NewsCardProps) {
           />
         </Link>
         <div className="flex flex-col justify-center min-w-0 flex-1">
-          <Badge
-            variant="secondary"
-            className="w-fit text-[10px] px-1.5 py-0 mb-1.5 font-medium"
-          >
-            {article.categoryName}
-          </Badge>
+          <Link href={`/kategori/${article.categorySlug}`}>
+            <Badge
+              variant="secondary"
+              className="w-fit text-[10px] px-1.5 py-0 mb-1.5 font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer"
+            >
+              {article.categoryName}
+            </Badge>
+          </Link>
           <Link href={`/berita/${article.slug}`}>
             <h3 className="text-sm font-semibold leading-snug line-clamp-2 group-hover:text-red-600 transition-colors">
               {article.title}
@@ -69,12 +71,14 @@ export function NewsCard({ article, variant = 'default' }: NewsCardProps) {
             loading="lazy"
           />
         </Link>
-        <Badge
-          variant="secondary"
-          className="text-[10px] px-1.5 py-0 mb-1.5 font-medium"
-        >
-          {article.categoryName}
-        </Badge>
+        <Link href={`/kategori/${article.categorySlug}`}>
+          <Badge
+            variant="secondary"
+            className="text-[10px] px-1.5 py-0 mb-1.5 font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer"
+          >
+            {article.categoryName}
+          </Badge>
+        </Link>
         <Link href={`/berita/${article.slug}`}>
           <h3 className="text-sm font-semibold leading-snug line-clamp-2 group-hover:text-red-600 transition-colors">
             {article.title}
@@ -110,12 +114,14 @@ export function NewsCard({ article, variant = 'default' }: NewsCardProps) {
         />
       </Link>
       <div className="p-4">
-        <Badge
-          variant="secondary"
-          className="text-[10px] px-1.5 py-0 mb-2 font-medium"
-        >
-          {article.categoryName}
-        </Badge>
+        <Link href={`/kategori/${article.categorySlug}`}>
+          <Badge
+            variant="secondary"
+            className="text-[10px] px-1.5 py-0 mb-2 font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors cursor-pointer"
+          >
+            {article.categoryName}
+          </Badge>
+        </Link>
         <Link href={`/berita/${article.slug}`}>
           <h3 className="text-base font-semibold leading-snug line-clamp-2 group-hover:text-red-600 transition-colors">
             {article.title}

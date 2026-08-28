@@ -7,7 +7,7 @@ export async function OPTIONS(request: NextRequest) {
   return new NextResponse(null, { status: 405 });
 }
 
-// GET /api/categories
+// GET /api/categories — returns categories with REAL article counts
 export async function GET(request: NextRequest) {
   const cors = handleCors(request);
   if (cors) return cors;
@@ -17,8 +17,44 @@ export async function GET(request: NextRequest) {
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);
-    const snap = await adminDb.collection('categories').orderBy('order', 'asc').get();
-    const categories = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    // Fetch all categories
+    const catSnap = await adminDb.collection('categories').orderBy('order', 'asc').get();
+    const categories = catSnap.docs.map((d) => ({ id: d.id, ...d.data() })) as Array<Record<string, any>>;
+
+    // Fetch all published articles to compute real article counts
+    const articlesSnap = await adminDb
+      .collection('articles')
+      .where('status', '==', 'published')
+      .select('categoryId')
+      .get();
+
+    // Count articles per category
+    const countMap: Record<string, number> = {};
+    for (const doc of articlesSnap.docs) {
+      const catId = doc.get('categoryId');
+      if (catId) {
+        countMap[catId] = (countMap[catId] || 0) + 1;
+      }
+    }
+
+    // Also update articleCount in Firestore for realtime listeners
+    const batch = adminDb.batch();
+    let needsUpdate = false;
+    for (const cat of categories) {
+      const realCount = countMap[cat.id] || 0;
+      if (cat.articleCount !== realCount) {
+        batch.update(adminDb.collection('categories').doc(cat.id), { articleCount: realCount });
+        needsUpdate = true;
+      }
+      cat.articleCount = realCount; // Use real count in response
+    }
+
+    // Batch update articleCounts in Firestore (fire-and-forget)
+    if (needsUpdate) {
+      batch.commit().catch((err) => console.warn('[Categories API] Failed to sync article counts:', err));
+    }
+
     return successResponse(categories);
   } catch (error) {
     console.error('Error fetching categories:', error);

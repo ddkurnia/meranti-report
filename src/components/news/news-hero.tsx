@@ -31,9 +31,11 @@ export function NewsHero({ article }: NewsHeroProps) {
       <div className="absolute inset-0 flex items-end">
         <div className="mx-auto w-full max-w-7xl px-4 pb-8 sm:pb-12 md:pb-16">
           <div className="max-w-3xl">
-            <Badge className="bg-red-600 hover:bg-red-700 text-white text-xs mb-3 sm:mb-4">
-              {article.categoryName}
-            </Badge>
+            <Link href={`/kategori/${article.categorySlug}`}>
+              <Badge className="bg-red-600 hover:bg-red-700 text-white text-xs mb-3 sm:mb-4 cursor-pointer">
+                {article.categoryName}
+              </Badge>
+            </Link>
             <Link href={`/berita/${article.slug}`}>
               <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-tight sm:leading-tight md:leading-tight">
                 {article.title}

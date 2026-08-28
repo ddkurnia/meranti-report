@@ -87,8 +87,33 @@ export async function DELETE(
 
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Firebase not configured', 503);
+
+    // Check how many articles use this category
+    const articlesSnap = await adminDb
+      .collection('articles')
+      .where('categoryId', '==', id)
+      .select('categoryId', 'categoryName', 'categorySlug')
+      .get();
+
+    const articleCount = articlesSnap.size;
+
+    // Clear category data from orphaned articles
+    if (articleCount > 0) {
+      const batch = adminDb.batch();
+      for (const doc of articlesSnap.docs) {
+        batch.update(doc.ref, {
+          categoryId: '',
+          categoryName: 'Tanpa Kategori',
+          categorySlug: 'tanpa-kategori',
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      await batch.commit();
+    }
+
     await adminDb.collection('categories').doc(id).delete();
-    return successResponse({ deleted: true });
+
+    return successResponse({ deleted: true, orphanedArticles: articleCount });
   } catch (error) {
     console.error('Error deleting category:', error);
     return errorResponse('Failed to delete category');
