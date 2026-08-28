@@ -250,21 +250,33 @@ export default function IklanPage() {
                     <div className="space-y-2">
                       <Label className="text-xs font-medium">Gambar Iklan</Label>
                       {hasImage ? (
-                        <div className="relative group/img rounded-lg overflow-hidden border">
+                        <div className="relative rounded-lg overflow-hidden border">
                           <img
                             src={editData.imageUrl}
                             alt="Preview iklan"
                             className="w-full h-40 object-contain bg-gray-50 dark:bg-gray-900"
                           />
-                          <div className="absolute top-2 right-2 opacity-0 group-hover/img:opacity-100 transition-opacity flex gap-1">
+                          {/* Overlay buttons - always visible */}
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="h-8 text-xs bg-white text-gray-800 hover:bg-gray-100"
+                              onClick={() => fileInputRef.current?.click()}
+                              disabled={uploading}
+                            >
+                              <Upload className="h-3.5 w-3.5 mr-1" />
+                              {uploading ? 'Mengupload...' : 'Ganti'}
+                            </Button>
                             <Button
                               type="button"
                               variant="destructive"
-                              size="icon"
-                              className="h-7 w-7"
+                              size="sm"
+                              className="h-8 text-xs"
                               onClick={handleRemoveImage}
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-3.5 w-3.5 mr-1" />
+                              Hapus
                             </Button>
                           </div>
                         </div>
