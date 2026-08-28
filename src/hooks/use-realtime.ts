@@ -15,32 +15,84 @@ import {
 import type { Article, Category, Author } from '@/types';
 
 /**
- * Generic hook for realtime Firestore collection listener
+ * Generic hook for realtime Firestore collection listener with API fallback.
+ * Tries onSnapshot first for true realtime. If it fails (e.g. missing composite index),
+ * falls back to fetching the REST API endpoint.
  */
 function useRealtimeCollection<T>(
   collectionName: string,
   constraints: QueryConstraint[] = [],
-  enabled = true
+  enabled = true,
+  fallbackApiUrl?: string,
 ): { data: T[]; loading: boolean; error: string | null } {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const realtimeFailedRef = useRef(false);
+  const initialLoadDoneRef = useRef(false);
+
+  // API fallback fetcher
+  const fetchFromApi = useCallback(async () => {
+    if (!fallbackApiUrl) return;
+    try {
+      const res = await fetch(fallbackApiUrl);
+      if (res.ok) {
+        const json = await res.json();
+        const items = (json.data || json || []) as T[];
+        if (items.length > 0) {
+          setData((prev) => {
+            // Only use API data if realtime hasn't already loaded
+            if (prev.length > 0 && !realtimeFailedRef.current) return prev;
+            return items;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn(`API fallback failed [${collectionName}]:`, err);
+    }
+  }, [fallbackApiUrl, collectionName]);
 
   useEffect(() => {
-    if (!isFirebaseClientConfigured || !enabled || !db) {
+    if (!enabled) {
       setLoading(false);
       return;
     }
 
+    // If Firebase client not configured, go straight to API fallback
+    if (!isFirebaseClientConfigured || !db) {
+      setLoading(true);
+      fetchFromApi().finally(() => setLoading(false));
+      return;
+    }
+
     setLoading(true);
+    realtimeFailedRef.current = false;
+    initialLoadDoneRef.current = false;
+
     const colRef = collection(db, collectionName);
     const q = constraints.length > 0 ? query(colRef, ...constraints) : colRef;
 
     let unsubscribe: Unsubscribe;
+    let snapshotReceived = false;
+
+    // Set a timeout: if onSnapshot doesn't fire within 4s, try API fallback
+    const fallbackTimer = setTimeout(() => {
+      if (!snapshotReceived && fallbackApiUrl) {
+        console.warn(`[Realtime] Timeout for ${collectionName}, trying API fallback`);
+        realtimeFailedRef.current = true;
+        fetchFromApi().finally(() => setLoading(false));
+      } else if (!snapshotReceived) {
+        // No fallback URL, just stop loading
+        setLoading(false);
+      }
+    }, 4000);
+
     try {
       unsubscribe = onSnapshot(
         q,
         (snapshot) => {
+          snapshotReceived = true;
+          clearTimeout(fallbackTimer);
           const items = snapshot.docs.map((doc) => ({
             id: doc.id,
             ...doc.data(),
@@ -48,22 +100,37 @@ function useRealtimeCollection<T>(
           setData(items);
           setLoading(false);
           setError(null);
+          initialLoadDoneRef.current = true;
         },
         (err) => {
-          console.error(`Realtime error [${collectionName}]:`, err);
+          console.warn(`[Realtime] onSnapshot error [${collectionName}]:`, err.message);
+          clearTimeout(fallbackTimer);
+          realtimeFailedRef.current = true;
           setError(err.message);
           setLoading(false);
+          // Try API fallback on error
+          if (fallbackApiUrl) {
+            fetchFromApi();
+          }
         }
       );
     } catch (err) {
-      console.error(`Failed to setup realtime [${collectionName}]:`, err);
+      console.warn(`[Realtime] Failed to setup listener [${collectionName}]:`, err);
+      clearTimeout(fallbackTimer);
+      realtimeFailedRef.current = true;
       setLoading(false);
+      // Try API fallback
+      if (fallbackApiUrl) {
+        fetchFromApi();
+      }
     }
 
     return () => {
+      clearTimeout(fallbackTimer);
       if (unsubscribe) unsubscribe();
     };
-  }, [collectionName, enabled, JSON.stringify(constraints.map(c => String(c)))]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collectionName, enabled]);
 
   return { data, loading, error };
 }
@@ -80,7 +147,8 @@ export function useRealtimeBreakingNews() {
       orderBy('publishedAt', 'desc'),
       limit(10),
     ],
-    true
+    true,
+    '/api/articles?breaking=true'
   );
   return { articles: data, loading, error };
 }
@@ -96,7 +164,8 @@ export function useRealtimeArticles(articleLimit = 12) {
       orderBy('publishedAt', 'desc'),
       limit(articleLimit),
     ],
-    true
+    true,
+    `/api/articles?limit=${articleLimit}`
   );
   return { articles: data, loading, error };
 }
@@ -113,7 +182,8 @@ export function useRealtimeFeaturedArticles() {
       orderBy('publishedAt', 'desc'),
       limit(5),
     ],
-    true
+    true,
+    '/api/articles?featured=true'
   );
   return { articles: data, loading, error };
 }
@@ -125,7 +195,8 @@ export function useRealtimeCategories() {
   const { data, loading, error } = useRealtimeCollection<Category>(
     'categories',
     [orderBy('order', 'asc')],
-    true
+    true,
+    '/api/categories'
   );
   return { categories: data, loading, error };
 }
@@ -215,7 +286,8 @@ export function useRealtimeComments(articleId: string) {
       orderBy('createdAt', 'desc'),
       limit(50),
     ],
-    !!articleId
+    !!articleId,
+    articleId ? `/api/comments?articleId=${articleId}` : undefined
   );
   return { comments: data, loading, error };
 }
@@ -229,8 +301,7 @@ export function useRealtimeArticleViewCount(articleId: string) {
   useEffect(() => {
     if (!isFirebaseClientConfigured || !db || !articleId) return;
 
-    // We can't listen to a single doc field easily without client SDK rules
-    // So we use a polling approach via API for views
+    // Poll via API for views
     const interval = setInterval(async () => {
       try {
         const res = await fetch(`/api/articles/${articleId}`);
@@ -239,7 +310,7 @@ export function useRealtimeArticleViewCount(articleId: string) {
           setViews(data.data?.views || 0);
         }
       } catch {}
-    }, 30000); // Poll every 30s
+    }, 30000);
 
     return () => clearInterval(interval);
   }, [articleId]);
