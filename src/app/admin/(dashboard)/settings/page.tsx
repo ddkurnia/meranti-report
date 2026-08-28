@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { Loader2, Save } from 'lucide-react';
 import type { SiteSettings } from '@/types';
 
@@ -74,6 +75,7 @@ const defaultSettings: SiteSettings = {
 
 export default function AdminSettingsPage() {
   const { toast } = useToast();
+  const { fetchWithAuth } = useAuth();
   const [settings, setSettings] = useState<SiteSettings>(defaultSettings);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
@@ -100,7 +102,7 @@ export default function AdminSettingsPage() {
   const saveSection = async (section: string) => {
     setSaving(section);
     try {
-      const res = await fetch('/api/settings', {
+      const res = await fetchWithAuth('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(settings),

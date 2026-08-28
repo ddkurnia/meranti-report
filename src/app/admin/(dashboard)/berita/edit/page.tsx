@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { generateSlug } from '@/lib/utils';
 import type { Category, Article, ArticleStatus } from '@/types';
 import {
@@ -51,6 +52,7 @@ function EditArticleForm() {
   const searchParams = useSearchParams();
   const articleId = searchParams.get('id');
   const { toast } = useToast();
+  const { fetchWithAuth } = useAuth();
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Form state
@@ -228,7 +230,7 @@ function EditArticleForm() {
         publishedAt: publishedAt ? new Date(publishedAt).toISOString() : undefined,
       };
 
-      const res = await fetch(`/api/articles/${articleId}`, {
+      const res = await fetchWithAuth(`/api/articles/${articleId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

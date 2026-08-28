@@ -51,7 +51,7 @@ import {
 export default function NewArticlePage() {
   const router = useRouter();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, fetchWithAuth } = useAuth();
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Form state
@@ -189,7 +189,7 @@ export default function NewArticlePage() {
         publishedAt: publishedAt ? new Date(publishedAt).toISOString() : undefined,
       };
 
-      const res = await fetch('/api/articles', {
+      const res = await fetchWithAuth('/api/articles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

@@ -33,12 +33,14 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { generateSlug } from '@/lib/utils';
 import { Plus, Pencil, Trash2, Loader2, PenTool } from 'lucide-react';
 import type { Author, AuthorFormData } from '@/types';
 
 export default function AdminAuthorPage() {
   const { toast } = useToast();
+  const { fetchWithAuth } = useAuth();
   const [authors, setAuthors] = useState<Author[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -123,7 +125,7 @@ export default function AdminAuthorPage() {
       const url = editingId ? `/api/authors/${editingId}` : '/api/authors';
       const method = editingId ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await fetchWithAuth(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -148,7 +150,7 @@ export default function AdminAuthorPage() {
     if (!deleteId) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/authors/${deleteId}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`/api/authors/${deleteId}`, { method: 'DELETE' });
       if (res.ok) {
         toast({ title: 'Berhasil', description: 'Penulis berhasil dihapus.' });
         setAuthors((prev) => prev.filter((a) => a.id !== deleteId));

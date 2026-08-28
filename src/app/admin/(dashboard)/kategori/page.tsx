@@ -32,12 +32,14 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { generateSlug } from '@/lib/utils';
 import { Plus, Pencil, Trash2, Loader2, FolderOpen } from 'lucide-react';
 import type { Category, CategoryFormData } from '@/types';
 
 export default function AdminKategoriPage() {
   const { toast } = useToast();
+  const { fetchWithAuth } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -106,7 +108,7 @@ export default function AdminKategoriPage() {
       const url = editingId ? `/api/categories/${editingId}` : '/api/categories';
       const method = editingId ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const res = await fetchWithAuth(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -131,7 +133,7 @@ export default function AdminKategoriPage() {
     if (!deleteId) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/categories/${deleteId}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`/api/categories/${deleteId}`, { method: 'DELETE' });
       if (res.ok) {
         toast({ title: 'Berhasil', description: 'Kategori berhasil dihapus.' });
         setCategories((prev) => prev.filter((c) => c.id !== deleteId));

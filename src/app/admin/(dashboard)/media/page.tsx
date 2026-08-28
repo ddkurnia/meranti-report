@@ -15,11 +15,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { Upload, Trash2, ImageOff, Copy, Loader2, ImageIcon } from 'lucide-react';
 import type { MediaItem } from '@/types';
 
 export default function AdminMediaPage() {
   const { toast } = useToast();
+  const { fetchWithAuth, firebaseUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [media, setMedia] = useState<MediaItem[]>([]);
@@ -61,6 +63,7 @@ export default function AdminMediaPage() {
     }
 
     try {
+      const token = firebaseUser ? await firebaseUser.getIdToken() : null;
       const xhr = new XMLHttpRequest();
 
       xhr.upload.addEventListener('progress', (event) => {
@@ -80,6 +83,7 @@ export default function AdminMediaPage() {
         };
         xhr.onerror = () => reject(new Error('Upload gagal'));
         xhr.open('POST', '/api/upload');
+        if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
         xhr.send(formData);
       });
 
@@ -102,7 +106,7 @@ export default function AdminMediaPage() {
     if (!deleteId) return;
     setDeleting(true);
     try {
-      const res = await fetch(`/api/media/${deleteId}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`/api/media/${deleteId}`, { method: 'DELETE' });
       if (res.ok) {
         toast({ title: 'Berhasil', description: 'Media berhasil dihapus.' });
         setMedia((prev) => prev.filter((m) => m.id !== deleteId));

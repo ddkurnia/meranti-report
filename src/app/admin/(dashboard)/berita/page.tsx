@@ -40,6 +40,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import {
   Plus,
   Search,
@@ -57,6 +58,7 @@ import type { Article, Category, ArticleStatus, PaginatedResponse } from '@/type
 export default function AdminBeritaPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const { fetchWithAuth } = useAuth();
 
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -120,7 +122,7 @@ export default function AdminBeritaPage() {
     if (!deleteId) return;
     setDeleting(deleteId);
     try {
-      const res = await fetch(`/api/articles/${deleteId}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`/api/articles/${deleteId}`, { method: 'DELETE' });
       if (res.ok) {
         toast({ title: 'Berhasil', description: 'Berita berhasil dihapus.' });
         setArticles((prev) => prev.filter((a) => a.id !== deleteId));
@@ -138,7 +140,7 @@ export default function AdminBeritaPage() {
   const handleTogglePublish = async (article: Article) => {
     const newStatus: ArticleStatus = article.status === 'published' ? 'draft' : 'published';
     try {
-      const res = await fetch(`/api/articles/${article.id}`, {
+      const res = await fetchWithAuth(`/api/articles/${article.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),

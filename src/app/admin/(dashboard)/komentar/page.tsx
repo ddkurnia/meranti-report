@@ -26,6 +26,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 import { truncateText, formatDate } from '@/lib/utils';
 import {
   MoreHorizontal,
@@ -39,6 +40,7 @@ import type { Comment, CommentStatus } from '@/types';
 
 export default function AdminKomentarPage() {
   const { toast } = useToast();
+  const { fetchWithAuth } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -67,7 +69,7 @@ export default function AdminKomentarPage() {
 
   const updateStatus = async (id: string, newStatus: CommentStatus) => {
     try {
-      const res = await fetch(`/api/comments/${id}`, {
+      const res = await fetchWithAuth(`/api/comments/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -85,7 +87,7 @@ export default function AdminKomentarPage() {
 
   const handleDelete = async (id: string) => {
     try {
-      const res = await fetch(`/api/comments/${id}`, { method: 'DELETE' });
+      const res = await fetchWithAuth(`/api/comments/${id}`, { method: 'DELETE' });
       if (res.ok) {
         toast({ title: 'Berhasil', description: 'Komentar berhasil dihapus.' });
         setComments((prev) => prev.filter((c) => c.id !== id));

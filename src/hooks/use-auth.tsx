@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
@@ -17,6 +17,8 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  /** Fetch with Firebase ID token automatically attached */
+  fetchWithAuth: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -72,8 +74,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setFirebaseUser(null);
   };
 
+  const fetchWithAuth = useCallback(async (input: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+    if (!firebaseUser) {
+      return fetch(input, init);
+    }
+    try {
+      const token = await firebaseUser.getIdToken();
+      const headers = new Headers(init?.headers);
+      headers.set('Authorization', `Bearer ${token}`);
+      if (!headers.has('Content-Type') && !(init?.body instanceof FormData)) {
+        headers.set('Content-Type', 'application/json');
+      }
+      return fetch(input, { ...init, headers });
+    } catch {
+      return fetch(input, init);
+    }
+  }, [firebaseUser]);
+
   return (
-    <AuthContext.Provider value={{ user, firebaseUser, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, firebaseUser, loading, signIn, signOut, fetchWithAuth }}>
       {children}
     </AuthContext.Provider>
   );
