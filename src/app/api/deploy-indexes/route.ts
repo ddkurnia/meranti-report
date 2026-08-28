@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * POST /api/deploy-indexes?key=meranti-seed-2025
- * Deploys required Firestore composite indexes via REST API.
- * Uses google-auth-library (already a dependency) for authentication.
+ * Uses firebase-admin's own credential to deploy Firestore composite indexes.
  */
 export async function POST(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -13,25 +12,38 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // Use firebase-admin's credential (already proven to work on Vercel)
+    const { adminDb } = await import('@/lib/firebase/admin');
+    const { adminAuth } = await import('@/lib/firebase/admin');
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Firebase Admin not initialized' }, { status: 500 });
+    }
+
+    // Get the app to access its credential
+    const { getApps } = await import('firebase-admin/app');
+    const apps = getApps();
+    if (apps.length === 0) {
+      return NextResponse.json({ error: 'No Firebase app' }, { status: 500 });
+    }
+
+    const app = apps[0];
+    const credential = app.options.credential as any;
+    if (!credential || typeof credential.getAccessToken !== 'function') {
+      return NextResponse.json({ error: 'No credential available' }, { status: 500 });
+    }
+
+    const accessTokenResponse = await credential.getAccessToken();
+    const accessToken = accessTokenResponse.access_token;
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Failed to get access token' }, { status: 500 });
+    }
+
+    // Get project ID from the service account key
     const saKeyRaw = process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
-    if (!saKeyRaw) {
-      return NextResponse.json({ error: 'FIREBASE_SERVICE_ACCOUNT_KEY not set' }, { status: 500 });
-    }
-
-    const saKey = JSON.parse(saKeyRaw);
-    const projectId = saKey.project_id;
+    const projectId = saKeyRaw ? JSON.parse(saKeyRaw).project_id : process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
     if (!projectId) {
-      return NextResponse.json({ error: 'No project_id in service account' }, { status: 500 });
+      return NextResponse.json({ error: 'No project ID' }, { status: 500 });
     }
-
-    // Use google-auth-library to get access token
-    const { GoogleAuth } = await import('google-auth-library');
-    const auth = new GoogleAuth({
-      credentials: saKey,
-      scopes: ['https://www.googleapis.com/auth/firebase', 'https://www.googleapis.com/auth/cloud-platform', 'https://www.googleapis.com/auth/datastore'],
-    });
-    const accessTokenRes = await auth.getAccessToken();
-    const accessToken = accessTokenRes!;
 
     // Check existing indexes
     const existingRes = await firestoreRequest(
@@ -40,7 +52,6 @@ export async function POST(request: NextRequest) {
     );
     const existingIndexes: any[] = existingRes.indexes || [];
 
-    // Required indexes for realtime onSnapshot queries
     const requiredIndexes = [
       { collectionId: 'articles', fields: [{ fieldPath: 'status', order: 'ASCENDING' }, { fieldPath: 'publishedAt', order: 'DESCENDING' }] },
       { collectionId: 'articles', fields: [{ fieldPath: 'breaking', order: 'ASCENDING' }, { fieldPath: 'status', order: 'ASCENDING' }, { fieldPath: 'publishedAt', order: 'DESCENDING' }] },
@@ -88,7 +99,7 @@ export async function POST(request: NextRequest) {
         results.push({
           index: idxKey,
           status: res.error ? 'error' : 'queued',
-          message: res.error ? JSON.stringify(res.error) : 'Index queued for creation',
+          message: res.error ? JSON.stringify(res.error) : 'Queued for creation',
         });
       } catch (err: any) {
         results.push({ index: idxKey, status: 'error', message: err.message });
@@ -99,11 +110,11 @@ export async function POST(request: NextRequest) {
       success: true,
       projectId,
       results,
-      note: 'New indexes take 2-5 minutes to build. The website uses API fallback in the meantime.',
+      note: 'New indexes take 2-5 minutes to build.',
     });
   } catch (error: any) {
     console.error('Deploy indexes error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message?.slice(0, 500) || 'Unknown error' }, { status: 500 });
   }
 }
 
@@ -116,5 +127,10 @@ async function firestoreRequest(url: string, accessToken: string, options?: { me
     },
     body: options?.body,
   });
-  return res.json();
+  const text = await res.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(`Non-JSON response (${res.status}): ${text.slice(0, 200)}`);
+  }
 }
