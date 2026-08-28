@@ -141,13 +141,13 @@ export function Header() {
 
       {/* Main header */}
       <div className="bg-[#1a2332] backdrop-blur-md bg-opacity-95 border-b border-white/10">
-        <div className="mx-auto max-w-7xl px-4 py-3 flex items-center justify-between">
+        <div className="mx-auto max-w-7xl px-4 py-2.5 sm:py-3.5 flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="shrink-0">
             <img
               src="/logo.png"
               alt="Meranti Report"
-              className="h-8 md:h-10 w-auto object-contain"
+              className="h-10 sm:h-12 md:h-14 w-auto object-contain"
             />
           </Link>
 
@@ -257,7 +257,7 @@ export function Header() {
                       <img
                         src="/logo.png"
                         alt="Meranti Report"
-                        className="h-8 w-auto object-contain"
+                        className="h-9 w-auto object-contain"
                       />
                     </Link>
                   </SheetTitle>
