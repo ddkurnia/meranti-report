@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
 
     // Check existing indexes
     const existingRes = await firestoreRequest(
-      `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/indexes`,
+      `https://firestore.googleapis.com/v1beta1/projects/${projectId}/databases/(default)/indexes`,
       accessToken
     );
     const existingIndexes: any[] = existingRes.indexes || [];
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
         });
 
         const res = await firestoreRequest(
-          `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/indexes`,
+          `https://firestore.googleapis.com/v1beta1/projects/${projectId}/databases/(default)/indexes`,
           accessToken,
           { method: 'POST', body },
         );
