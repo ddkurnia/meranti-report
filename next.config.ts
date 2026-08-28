@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
   reactStrictMode: true,
+  serverExternalPackages: ['firebase-admin', 'jose'],
   images: {
     remotePatterns: [
       {
