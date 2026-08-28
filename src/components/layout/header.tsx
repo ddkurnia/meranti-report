@@ -147,7 +147,7 @@ export function Header() {
             <img
               src="/logo.png"
               alt="Meranti Report"
-              className="h-10 sm:h-12 md:h-14 w-auto object-contain"
+              className="h-9 sm:h-12 md:h-16 lg:h-[72px] w-auto object-contain"
             />
           </Link>
 
@@ -257,7 +257,7 @@ export function Header() {
                       <img
                         src="/logo.png"
                         alt="Meranti Report"
-                        className="h-9 w-auto object-contain"
+                        className="h-8 w-auto object-contain"
                       />
                     </Link>
                   </SheetTitle>
