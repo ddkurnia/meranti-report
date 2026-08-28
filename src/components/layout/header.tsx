@@ -18,7 +18,6 @@ import {
   X,
   Video,
   Camera,
-  Shield,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -136,13 +135,6 @@ export function Header() {
               <Twitter className="h-3.5 w-3.5" />
             </a>
             <span className="hidden md:inline text-white/20 mx-1">|</span>
-            <Link
-              href="/admin"
-              className="hidden md:inline-flex items-center gap-1 hover:text-white transition-colors"
-            >
-              <Shield className="h-3 w-3" />
-              Admin
-            </Link>
           </div>
         </div>
       </div>
@@ -300,15 +292,6 @@ export function Header() {
                       )}
                     </div>
                   ))}
-                  <div className="border-t border-white/10 mt-3 pt-3">
-                    <Link
-                      href="/admin"
-                      className="flex items-center gap-2 px-3 py-2.5 text-sm text-gray-400 hover:text-white rounded-md transition-colors"
-                    >
-                      <Shield className="h-4 w-4" />
-                      Admin Panel
-                    </Link>
-                  </div>
                 </nav>
                 <div className="mt-auto p-4 border-t border-white/10 text-xs text-gray-500">
                   Kabar Meranti, Dari Kita Untuk Kita.
