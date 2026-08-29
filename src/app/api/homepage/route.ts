@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { isFirebaseConfigured, successResponse, errorResponse, normalizeDocDates } from '@/lib/api-helpers';
 
 // GET /api/homepage — Single endpoint for all homepage data
-// Replaces 5 separate API calls + 5 onSnapshot listeners
+// Fetches articles once, filters in memory (no composite index needed)
 export async function GET() {
   try {
     if (!isFirebaseConfigured()) return errorResponse('Not configured', 503);
@@ -10,46 +10,23 @@ export async function GET() {
     const { adminDb } = await import('@/lib/firebase/admin');
     if (!adminDb) return errorResponse('Not configured', 503);
 
-    // Run all queries in parallel — 5 targeted reads instead of 5 full collection scans
-    const [breakingSnap, featuredSnap, latestSnap, categoriesSnap, adsSnap] = await Promise.all([
-      // 1. Breaking news (max 10)
-      adminDb
-        .collection('articles')
-        .where('breaking', '==', true)
-        .where('status', '==', 'published')
-        .orderBy('publishedAt', 'desc')
-        .limit(10)
-        .get(),
-      // 2. Featured articles (max 5)
-      adminDb
-        .collection('articles')
-        .where('featured', '==', true)
-        .where('status', '==', 'published')
-        .orderBy('publishedAt', 'desc')
-        .limit(5)
-        .get(),
-      // 3. Latest articles (13 for homepage grid)
-      adminDb
-        .collection('articles')
-        .where('status', '==', 'published')
-        .orderBy('publishedAt', 'desc')
-        .limit(13)
-        .get(),
-      // 4. Categories (ordered)
-      adminDb
-        .collection('categories')
-        .orderBy('order', 'asc')
-        .get(),
-      // 5. Active ads
-      adminDb
-        .collection('ads')
-        .orderBy('slotId', 'asc')
-        .get(),
+    // 3 parallel reads: articles, categories, ads (no composite index needed)
+    const [articlesSnap, categoriesSnap, adsSnap] = await Promise.all([
+      adminDb.collection('articles').get(),
+      adminDb.collection('categories').orderBy('order', 'asc').get(),
+      adminDb.collection('ads').orderBy('slotId', 'asc').get(),
     ]);
 
-    const breaking = breakingSnap.docs.map((d) => normalizeDocDates({ id: d.id, ...d.data() }));
-    const featured = featuredSnap.docs.map((d) => normalizeDocDates({ id: d.id, ...d.data() }));
-    const latest = latestSnap.docs.map((d) => normalizeDocDates({ id: d.id, ...d.data() }));
+    // Normalize all articles once
+    const allArticles = articlesSnap.docs.map((d) => normalizeDocDates({ id: d.id, ...d.data() }));
+
+    // Filter & sort in memory (no index needed)
+    const published = allArticles.filter((a: any) => a.status === 'published');
+    published.sort((a: any, b: any) => String(b.publishedAt || '').localeCompare(String(a.publishedAt || '')));
+
+    const breaking = published.filter((a: any) => a.breaking === true).slice(0, 10);
+    const featured = published.filter((a: any) => a.featured === true).slice(0, 5);
+    const latest = published.slice(0, 13);
     const categories = categoriesSnap.docs.map((d) => normalizeDocDates({ id: d.id, ...d.data() }));
     const ads = adsSnap.docs.map((d) => normalizeDocDates({ id: d.id, ...d.data() }));
 
