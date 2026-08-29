@@ -19,7 +19,6 @@ import {
   Heart,
   Building,
   Palette,
-  Plane,
   Trophy,
   Cpu,
   Users,
@@ -28,41 +27,51 @@ import {
   MessageSquare,
   Landmark,
   Globe,
+  Sparkles,
+  Compass,
 } from 'lucide-react';
 import type { Category } from '@/types';
 
+// Geo slugs for Wilayah section
+const GEO_SLUGS = [
+  'meranti', 'selatpanjang', 'tebing-tinggi', 'tebing-tinggi-barat',
+  'merbau', 'rangsang', 'rangsang-barat', 'bantan', 'pulau-kijang',
+];
+
 const categoryIcons: Record<string, React.ElementType> = {
+  // Wilayah
   'meranti': MapPin,
   'selatpanjang': MapPin,
   'tebing-tinggi': MapPin,
+  'tebing-tinggi-barat': MapPin,
   'merbau': MapPin,
   'rangsang': MapPin,
   'rangsang-barat': MapPin,
-  'tebing-tinggi-barat': MapPin,
+  'bantan': MapPin,
   'pulau-kijang': MapPin,
+  // Topik
+  'nasional': Globe,
   'politik': Landmark,
   'ekonomi-bisnis': Briefcase,
   'pendidikan': GraduationCap,
   'kesehatan': Heart,
   'infrastruktur': Building,
+  'sosial': Users,
   'budaya': Palette,
-  'pariwisata': Plane,
+  'ragam': Sparkles,
+  'pariwisata': Compass,
   'olahraga': Trophy,
   'teknologi': Cpu,
-  'sosial': Users,
   'hukum-kriminal': Scale,
   'lingkungan': Leaf,
   'opini': MessageSquare,
-  'nasional': Globe,
 };
 
 export default function KategoriIndexPage() {
   const { categories, loading } = useRealtimeCategories();
 
   // Separate geographic (wilayah) and topical categories
-  const geoCategories = categories.filter((c) =>
-    ['meranti', 'selatpanjang', 'tebing-tinggi', 'merbau', 'rangsang', 'rangsang-barat', 'tebing-tinggi-barat', 'pulau-kijang'].includes(c.slug)
-  );
+  const geoCategories = categories.filter((c) => GEO_SLUGS.includes(c.slug));
   const topicCategories = categories.filter((c) => !geoCategories.includes(c));
 
   return (

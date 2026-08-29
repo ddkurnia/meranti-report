@@ -174,20 +174,49 @@ export function Header() {
                         )}
                       />
                     </button>
-                    {catDropdownOpen && categories.length > 0 && (
-                      <div className="absolute top-full left-0 mt-1 w-56 bg-white dark:bg-[#243044] rounded-md shadow-lg border border-gray-200 dark:border-white/10 py-1 z-50">
-                        {categories.map((cat) => (
-                          <Link
-                            key={cat.id}
-                            href={`/kategori/${cat.slug}`}
-                            className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
-                            onClick={() => setCatDropdownOpen(false)}
-                          >
-                            {cat.name}
-                          </Link>
-                        ))}
+                    {catDropdownOpen && categories.length > 0 && (() => {
+                      const GEO_SLUGS = ['meranti', 'selatpanjang', 'tebing-tinggi', 'tebing-tinggi-barat', 'merbau', 'rangsang', 'rangsang-barat', 'bantan', 'pulau-kijang'];
+                      const geoCats = categories.filter((c: Category) => GEO_SLUGS.includes(c.slug));
+                      const topicCats = categories.filter((c: Category) => !GEO_SLUGS.includes(c.slug));
+                      return (
+                      <div className="absolute top-full left-0 mt-1 w-64 bg-white dark:bg-[#243044] rounded-md shadow-xl border border-gray-200 dark:border-white/10 z-50 max-h-[70vh] overflow-y-auto">
+                        {geoCats.length > 0 && (
+                          <div>
+                            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-white/5">
+                              Wilayah
+                            </div>
+                            {geoCats.map((cat: Category) => (
+                              <Link
+                                key={cat.id}
+                                href={`/kategori/${cat.slug}`}
+                                className="block px-4 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                                onClick={() => setCatDropdownOpen(false)}
+                              >
+                                {cat.name}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                        {topicCats.length > 0 && (
+                          <div className={geoCats.length > 0 ? 'border-t border-gray-100 dark:border-white/5' : ''}>
+                            <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-white/5">
+                              Topik
+                            </div>
+                            {topicCats.map((cat: Category) => (
+                              <Link
+                                key={cat.id}
+                                href={`/kategori/${cat.slug}`}
+                                className="block px-4 py-1.5 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+                                onClick={() => setCatDropdownOpen(false)}
+                              >
+                                {cat.name}
+                              </Link>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 );
               }
@@ -277,19 +306,43 @@ export function Header() {
                         {item.icon && <item.icon className="h-4 w-4" />}
                         {item.label}
                       </Link>
-                      {item.hasDropdown && categories.length > 0 && (
-                        <div className="ml-4 border-l border-white/10 pl-3 mt-1 flex flex-col gap-0.5">
-                          {categories.map((cat) => (
-                            <Link
-                              key={cat.id}
-                              href={`/kategori/${cat.slug}`}
-                              className="px-3 py-1.5 text-sm text-gray-400 hover:text-white rounded-md transition-colors"
-                            >
-                              {cat.name}
-                            </Link>
-                          ))}
-                        </div>
-                      )}
+                      {item.hasDropdown && categories.length > 0 && (() => {
+                        const GEO_SLUGS = ['meranti', 'selatpanjang', 'tebing-tinggi', 'tebing-tinggi-barat', 'merbau', 'rangsang', 'rangsang-barat', 'bantan', 'pulau-kijang'];
+                        const geoCats = categories.filter((c: Category) => GEO_SLUGS.includes(c.slug));
+                        const topicCats = categories.filter((c: Category) => !GEO_SLUGS.includes(c.slug));
+                        return (
+                          <div className="ml-4 border-l border-white/10 pl-3 mt-1 flex flex-col gap-0.5">
+                            {geoCats.length > 0 && (
+                              <>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 px-3 pt-2 pb-0.5">Wilayah</span>
+                                {geoCats.map((cat: Category) => (
+                                  <Link
+                                    key={cat.id}
+                                    href={`/kategori/${cat.slug}`}
+                                    className="px-3 py-1.5 text-sm text-gray-400 hover:text-white rounded-md transition-colors"
+                                  >
+                                    {cat.name}
+                                  </Link>
+                                ))}
+                              </>
+                            )}
+                            {topicCats.length > 0 && (
+                              <>
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 px-3 pt-3 pb-0.5">Topik</span>
+                                {topicCats.map((cat: Category) => (
+                                  <Link
+                                    key={cat.id}
+                                    href={`/kategori/${cat.slug}`}
+                                    className="px-3 py-1.5 text-sm text-gray-400 hover:text-white rounded-md transition-colors"
+                                  >
+                                    {cat.name}
+                                  </Link>
+                                ))}
+                              </>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
                   ))}
                 </nav>
