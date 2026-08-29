@@ -41,14 +41,12 @@ export default function ArticlePage() {
     setLoading(true);
     setNotFound(false);
     try {
-      // Fetch articles and find by slug
-      const res = await fetch(`/api/articles?limit=100`);
+      // Single targeted query by slug — not full collection scan
+      const res = await fetch(`/api/articles/slug/${slug}`);
       if (res.ok) {
-        const data = await res.json();
-        const articles = data.data || data || [];
-        const found = (articles as Article[]).find((a) => a.slug === slug);
-        if (found) {
-          setArticle(found);
+        const json = await res.json();
+        if (json.data) {
+          setArticle(json.data);
         } else {
           setNotFound(true);
         }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,33 +13,54 @@ import { Footer } from '@/components/layout/footer';
 import { BreadcrumbNav } from '@/components/news/breadcrumb-nav';
 import { NewsGrid } from '@/components/news/news-grid';
 import { NewsletterSection } from '@/components/news/newsletter-section';
-import { useRealtimeCategories, useRealtimeArticles } from '@/hooks/use-realtime';
+import { useCachedCategories } from '@/hooks/use-realtime';
 import type { Article, Category } from '@/types';
 
 const PAGE_SIZE = 12;
 
+const cache = new Map<string, { data: Article[]; ts: number }>();
+const CACHE_TTL = 120_000;
+
+function fetchCachedArticles(key: string, url: string): Promise<Article[]> {
+  const now = Date.now();
+  const c = cache.get(key);
+  if (c && now - c.ts < CACHE_TTL) return Promise.resolve(c.data);
+  return fetch(url)
+    .then((r) => r.json())
+    .then((json) => {
+      const data = (json.data || json || []) as Article[];
+      cache.set(key, { data, ts: now });
+      return data;
+    });
+}
+
 export default function CategoryPage() {
   const params = useParams();
   const slug = params.slug as string;
-  const { categories, loading: catLoading } = useRealtimeCategories();
-  const { articles: allArticles, loading: articlesLoading } = useRealtimeArticles(100);
+  const { categories, loading: catLoading } = useCachedCategories();
+  const [allArticles, setAllArticles] = useState<Article[]>([]);
+  const [articlesLoading, setArticlesLoading] = useState(true);
   const [page, setPage] = useState(1);
 
-  // Find category from realtime data
+  // Fetch articles for this category only (targeted, not full scan)
+  useEffect(() => {
+    if (!slug) return;
+    setArticlesLoading(true);
+    fetchCachedArticles(`cat-${slug}`, `/api/articles?category=${slug}&limit=100`)
+      .then((data) => setAllArticles(data))
+      .catch(() => setAllArticles([]))
+      .finally(() => setArticlesLoading(false));
+  }, [slug]);
+
+  // Find category from data
   const category = useMemo(
     () => categories.find((c) => c.slug === slug) || null,
     [categories, slug]
   );
 
-  // Filter articles for this category
-  const categoryArticles = useMemo(
-    () => allArticles.filter((a) => a.categorySlug === slug || a.categoryId === category?.id),
-    [allArticles, slug, category?.id]
-  );
-
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(categoryArticles.length / PAGE_SIZE));
-  const paginatedArticles = categoryArticles.slice(
+  const totalPages = Math.max(1, Math.ceil(allArticles.length / PAGE_SIZE));
+  const paginatedArticles = allArticles.slice(
     (page - 1) * PAGE_SIZE,
     page * PAGE_SIZE
   );
@@ -137,12 +158,12 @@ export default function CategoryPage() {
                 )}
               </div>
               <Badge variant="secondary" className="font-mono text-sm w-fit">
-                {category.articleCount || categoryArticles.length} artikel
+                {category.articleCount || allArticles.length} artikel
               </Badge>
             </div>
           </div>
 
-          {categoryArticles.length === 0 ? (
+          {allArticles.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
               <Newspaper className="h-12 w-12 mb-4 opacity-30" />
               <p className="text-lg font-medium">Belum ada berita</p>

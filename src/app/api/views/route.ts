@@ -1,41 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isFirebaseConfigured, handleCors, successResponse, errorResponse } from '@/lib/api-helpers';
+import { isFirebaseConfigured, successResponse, errorResponse } from '@/lib/api-helpers';
 
-export async function OPTIONS(request: NextRequest) {
-  const cors = handleCors(request);
-  if (cors) return cors;
-  return new NextResponse(null, { status: 405 });
-}
-
-// GET /api/views?articleId=xxx
-export async function GET(request: NextRequest) {
-  const cors = handleCors(request);
-  if (cors) return cors;
-
-  try {
-    const { searchParams } = new URL(request.url);
-    const articleId = searchParams.get('articleId');
-
-    if (!articleId) return errorResponse('articleId is required', 400);
-
-    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
-
-    const { adminDb } = await import('@/lib/firebase/admin');
-    if (!adminDb) return errorResponse('Firebase not configured', 503);
-    const snap = await adminDb
-      .collection('views')
-      .where('articleId', '==', articleId)
-      .count()
-      .get();
-
-    return successResponse({ articleId, views: snap.data().count });
-  } catch (error) {
-    console.error('Error fetching views:', error);
-    return errorResponse('Failed to fetch views');
-  }
-}
-
-// POST /api/views - Record a view
+// POST /api/views — Increment article view counter (client-side dedup via sessionStorage)
+// Optimized: 1 read + 1 write total (no views collection, no dedup query)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -44,49 +11,22 @@ export async function POST(request: NextRequest) {
     if (!articleId) return errorResponse('articleId is required', 400);
     if (!sessionId) return errorResponse('sessionId is required', 400);
 
-    if (!isFirebaseConfigured()) return errorResponse('Firebase not configured', 503);
+    if (!isFirebaseConfigured()) return errorResponse('Not configured', 503);
 
     const { adminDb } = await import('@/lib/firebase/admin');
-    if (!adminDb) return errorResponse('Firebase not configured', 503);
+    if (!adminDb) return errorResponse('Not configured', 503);
 
-    // Deduplication: check if same sessionId viewed same article within 1 hour
-    const oneHourAgo = new Date();
-    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-
-    const existingView = await adminDb
-      .collection('views')
-      .where('articleId', '==', articleId)
-      .where('sessionId', '==', sessionId)
-      .get();
-
-    // Check if any recent view exists (within 1 hour)
-    let shouldRecord = true;
-    existingView.docs.forEach((doc) => {
-      const createdAt = doc.data().createdAt?.toDate?.() || doc.data().createdAt;
-      if (createdAt && new Date(createdAt) > oneHourAgo) {
-        shouldRecord = false;
-      }
-    });
-
-    if (!shouldRecord) {
-      return successResponse({ recorded: false, reason: 'Already viewed recently' });
-    }
-
-    // Record the view
-    await adminDb.collection('views').add({
-      articleId,
-      sessionId,
-      createdAt: new Date().toISOString(),
-    });
-
-    // Also increment the view count on the article
+    // Single read + write: just increment the counter
+    // Client already deduplicates via sessionStorage (1-hour check)
     const articleDoc = await adminDb.collection('articles').doc(articleId).get();
+    if (!articleDoc.exists) return errorResponse('Article not found', 404);
+
     const currentViews = (articleDoc.data()?.views || 0) as number;
     await adminDb.collection('articles').doc(articleId).update({
       views: currentViews + 1,
     });
 
-    return successResponse({ recorded: true });
+    return successResponse({ recorded: true, views: currentViews + 1 });
   } catch (error) {
     console.error('Error recording view:', error);
     return errorResponse('Failed to record view');

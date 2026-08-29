@@ -4,11 +4,11 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useRealtimeBreakingNews } from '@/hooks/use-realtime';
+import { useCachedBreakingNews } from '@/hooks/use-realtime';
 import type { Article } from '@/types';
 
 export function BreakingNewsTicker() {
-  const { articles, loading } = useRealtimeBreakingNews();
+  const { articles, loading } = useCachedBreakingNews();
   const [dismissed, setDismissed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 

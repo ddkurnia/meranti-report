@@ -13,40 +13,35 @@ import { NewsCard } from '@/components/news/news-card';
 import { NewsletterSection } from '@/components/news/newsletter-section';
 import { AdSlotRenderer } from '@/components/ads/ad-banner';
 import { ChevronRight, TrendingUp, Newspaper, ArrowRight, Zap, FolderOpen } from 'lucide-react';
-import { useRealtimeArticles, useRealtimeFeaturedArticles, useRealtimeCategories, useRealtimeAds } from '@/hooks/use-realtime';
+import { useHomepageData } from '@/hooks/use-realtime';
 import type { Article, Category, AdSlot } from '@/types';
 
 export default function HomePage() {
-  const { articles: realtimeArticles, loading: articlesLoading } = useRealtimeArticles(13);
-  const { articles: featuredList, loading: featuredLoading } = useRealtimeFeaturedArticles();
-  const { categories, loading: catLoading } = useRealtimeCategories();
-  const { ads } = useRealtimeAds();
-  const loading = articlesLoading || featuredLoading || catLoading;
+  const { breaking, featured, latest: realtimeArticles, categories, ads, loading } = useHomepageData();
 
-  const featuredArticle = featuredList.length > 0
-    ? featuredList[0]
-    : realtimeArticles.length > 0
+  const featuredArticle = featured && featured.length > 0
+    ? featured[0]
+    : realtimeArticles && realtimeArticles.length > 0
       ? realtimeArticles[0]
       : null;
 
   // When there are few articles, include the featured article in the grid too
-  // so sections don't appear empty
-  const hasManyArticles = realtimeArticles.length > 7;
+  const hasManyArticles = (realtimeArticles || []).length > 7;
 
   const latestArticles = hasManyArticles
-    ? realtimeArticles.filter((a: Article) => a.id !== featuredArticle?.id).slice(0, 6)
-    : realtimeArticles.slice(0, 6);
+    ? (realtimeArticles || []).filter((a: Article) => a.id !== featuredArticle?.id).slice(0, 6)
+    : (realtimeArticles || []).slice(0, 6);
 
-  const popularArticles = [...(realtimeArticles)]
+  const popularArticles = [...(realtimeArticles || [])]
     .sort((a: Article, b: Article) => (b.views || 0) - (a.views || 0))
     .slice(0, 5);
 
-  const pilihanArticles = realtimeArticles
+  const pilihanArticles = (realtimeArticles || [])
     .filter((a: Article) => a.featured || a.breaking)
     .filter((a: Article) => hasManyArticles ? a.id !== featuredArticle?.id : true)
     .slice(0, 3);
 
-  const moreArticles = hasManyArticles ? realtimeArticles.slice(7, 13) : [];
+  const moreArticles = hasManyArticles ? (realtimeArticles || []).slice(7, 13) : [];
 
   // Split latest articles for in-feed ad
   const firstRow = latestArticles.slice(0, 3);
@@ -197,11 +192,11 @@ export default function HomePage() {
               <AdSlotRenderer ads={ads} slotId="slot-5" />
 
               {/* Category List */}
-              {categories.length > 0 && (
+              {(categories || []).length > 0 && (
                 <div>
                   <SectionHeader title="Kategori" icon={null} />
                   <div className="grid grid-cols-2 gap-2">
-                    {categories.slice(0, 8).map((cat) => (
+                    {(categories || []).slice(0, 8).map((cat: Category) => (
                       <Link
                         key={cat.id}
                         href={`/kategori/${cat.slug}`}
@@ -235,9 +230,9 @@ export default function HomePage() {
         </div>
 
         {/* Berita per Kategori — top categories with their latest articles */}
-        {!loading && categories.length > 0 && (
-          <CategorySections categories={categories} articles={realtimeArticles} />
-        )}
+        {!loading && (categories || []).length > 0 && (
+          <CategorySections categories={(categories || []) as Category[]} articles={realtimeArticles || []} />
+        )};
 
         {/* More News */}
         {moreArticles.length > 0 && (
