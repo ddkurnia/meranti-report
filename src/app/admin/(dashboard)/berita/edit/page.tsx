@@ -54,6 +54,7 @@ import {
   ChevronDown,
   ChevronUp,
   Check,
+  Upload,
 } from 'lucide-react';
 
 function EditArticleForm() {
@@ -95,6 +96,8 @@ function EditArticleForm() {
   const [showLinkInput, setShowLinkInput] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
   const [showImageInput, setShowImageInput] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // TipTap Editor
   const editor = useEditor({
@@ -282,6 +285,37 @@ function EditArticleForm() {
     }
   };
 
+  // Upload featured image to Cloudinary
+  const handleImageUpload = useCallback(async (file: File) => {
+    setUploadingImage(true);
+    try {
+      const CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'tsgloc4b';
+      const UPLOAD_PRESET = 'merantireport';
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', UPLOAD_PRESET);
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`,
+        { method: 'POST', body: formData }
+      );
+      const data = await res.json();
+
+      if (!res.ok) throw new Error(data.error?.message || 'Upload gagal');
+      setFeaturedImage(data.secure_url);
+      toast({ title: 'Berhasil', description: 'Gambar berhasil diupload.' });
+    } catch (err) {
+      console.error('Image upload error:', err);
+      toast({
+        title: 'Upload Gagal',
+        description: err instanceof Error ? err.message : 'Gagal mengupload gambar.',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  }, [toast]);
+
   const removeTag = (tag: string) => {
     const newTags = tags.filter((t) => t !== tag);
     setTags(newTags);
@@ -464,12 +498,74 @@ function EditArticleForm() {
           {featuredImage ? (
             <div className="relative rounded-lg overflow-hidden border">
               <img src={featuredImage} alt="Featured" className="w-full h-48 object-cover" />
-              <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 h-7 w-7" onClick={() => setFeaturedImage('')}>
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  className="h-8 text-xs bg-white text-gray-800 hover:bg-gray-100"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingImage}
+                >
+                  <Upload className="h-3.5 w-3.5 mr-1" />
+                  Ganti
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={() => setFeaturedImage('')}
+                >
+                  <X className="h-3.5 w-3.5 mr-1" />
+                  Hapus
+                </Button>
+              </div>
             </div>
-          ) : null}
-          <Input placeholder="URL gambar utama" value={featuredImage} onChange={(e) => setFeaturedImage(e.target.value)} />
+          ) : (
+            <div
+              className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 hover:bg-accent/30 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {uploadingImage ? (
+                <div className="flex flex-col items-center gap-2">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <span className="text-sm text-muted-foreground">Mengupload & mengkompres...</span>
+                </div>
+              ) : (
+                <>
+                  <Upload className="h-8 w-8 mx-auto text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Klik untuk upload gambar
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    JPG, PNG, WebP, GIF — Auto kompres oleh Cloudinary
+                  </p>
+                </>
+              )}
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleImageUpload(file);
+              e.target.value = '';
+            }}
+          />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <span className="text-xs text-muted-foreground">atau</span>
+            </div>
+            <Input
+              placeholder="URL gambar utama"
+              value={featuredImage}
+              onChange={(e) => setFeaturedImage(e.target.value)}
+              className="pl-10"
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="imageCaption">Caption Gambar</Label>
             <Input id="imageCaption" placeholder="Caption gambar" value={imageCaption} onChange={(e) => setImageCaption(e.target.value)} />
