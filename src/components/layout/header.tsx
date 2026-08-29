@@ -291,7 +291,7 @@ export function Header() {
                     </Link>
                   </SheetTitle>
                 </SheetHeader>
-                <nav className="flex flex-col p-4 gap-1" aria-label="Menu mobile">
+                <nav className="flex flex-col p-4 gap-1 overflow-y-auto flex-1 min-h-0" aria-label="Menu mobile">
                   {navItems.map((item) => (
                     <div key={item.label}>
                       <Link
