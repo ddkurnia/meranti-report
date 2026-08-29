@@ -17,7 +17,7 @@ import { ShareButtons } from '@/components/news/share-buttons';
 import { ViewCounter } from '@/components/news/view-counter';
 import { RelatedNews } from '@/components/news/related-news';
 import { NewsletterSection } from '@/components/news/newsletter-section';
-import { formatDate, getReadingTime, toISOString } from '@/lib/utils';
+import { formatDate, getReadingTime } from '@/lib/utils';
 import type { Article } from '@/types';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://merantireport.com';
@@ -82,65 +82,8 @@ export default function ArticlePage() {
     }
   }, [article]);
 
-  // JSON-LD
-  useEffect(() => {
-    if (!article) return;
-
-    const articleSchema = {
-      '@context': 'https://schema.org',
-      '@type': 'NewsArticle',
-      headline: article.title,
-      description: article.excerpt,
-      image: article.featuredImage,
-      datePublished: toISOString(article.publishedAt),
-      dateModified: toISOString(article.updatedAt),
-      author: {
-        '@type': 'Person',
-        name: article.authorName,
-        image: article.authorPhoto,
-      },
-      publisher: {
-        '@type': 'Organization',
-        name: 'Meranti Report',
-        logo: { '@type': 'ImageObject', url: `${SITE_URL}/logo.png` },
-      },
-      mainEntityOfPage: {
-        '@type': 'WebPage',
-        '@id': `${SITE_URL}/berita/${article.slug}`,
-      },
-      articleSection: article.categoryName,
-      keywords: article.tags.join(', '),
-    };
-
-    const breadcrumbSchema = {
-      '@context': 'https://schema.org',
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'Beranda', item: SITE_URL },
-        { '@type': 'ListItem', position: 2, name: article.categoryName, item: `${SITE_URL}/kategori/${article.categorySlug}` },
-        { '@type': 'ListItem', position: 3, name: article.title },
-      ],
-    };
-
-    // Remove old JSON-LD scripts
-    document.querySelectorAll('script[type="application/ld+json"][data-article-schema]').forEach(el => el.remove());
-
-    const script1 = document.createElement('script');
-    script1.type = 'application/ld+json';
-    script1.setAttribute('data-article-schema', 'true');
-    script1.textContent = JSON.stringify(articleSchema);
-    document.head.appendChild(script1);
-
-    const script2 = document.createElement('script');
-    script2.type = 'application/ld+json';
-    script2.setAttribute('data-article-schema', 'true');
-    script2.textContent = JSON.stringify(breadcrumbSchema);
-    document.head.appendChild(script2);
-
-    return () => {
-      document.querySelectorAll('script[type="application/ld+json"][data-article-schema]').forEach(el => el.remove());
-    };
-  }, [article]);
+  // Meta tags, OG image, and JSON-LD are now handled by layout.tsx (server-side)
+  // for proper social media sharing and SEO.
 
   if (loading) {
     return <ArticleLoadingSkeleton />;
