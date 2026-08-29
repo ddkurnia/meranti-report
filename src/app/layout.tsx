@@ -28,11 +28,13 @@ export const metadata: Metadata = {
     siteName: 'Meranti Report',
     type: 'website',
     locale: 'id_ID',
+    images: [{ url: '/og-default.png', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Meranti Report',
     description: 'Portal berita lokal terpercaya di Kepulauan Meranti.',
+    images: ['/og-default.png'],
   },
   robots: {
     index: true,

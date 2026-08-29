@@ -4,12 +4,13 @@ import type { Article, Category, SiteSettings } from '@/types';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://merantireport.com';
 const SITE_NAME = 'Meranti Report';
+const DEFAULT_OG_IMAGE = `${SITE_URL}/og-default.png`;
 
 export function generateArticleMetadata(article: Article): Metadata {
   const title = article.seoTitle || `${article.title} - ${SITE_NAME}`;
   const description = article.seoDescription || article.excerpt;
   const url = `${SITE_URL}/berita/${article.slug}`;
-  const ogImage = article.featuredImage || `${SITE_URL}/og-default.jpg`;
+  const ogImage = article.featuredImage || DEFAULT_OG_IMAGE;
 
   return {
     title,
@@ -91,7 +92,7 @@ export function generateSiteMetadata(settings?: SiteSettings): Metadata {
       locale: 'id_ID',
       images: settings?.seo.ogImage
         ? [{ url: settings.seo.ogImage, width: 1200, height: 630 }]
-        : undefined,
+        : [{ url: DEFAULT_OG_IMAGE, width: 1200, height: 630 }],
     },
     twitter: {
       card: 'summary_large_image',
