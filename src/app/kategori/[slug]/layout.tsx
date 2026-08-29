@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { generateCategoryMetadata } from '@/lib/seo';
+import { normalizeDocDates } from '@/lib/api-helpers';
+import type { Category } from '@/types';
 
 type Props = {
   children: React.ReactNode;
@@ -8,17 +10,19 @@ type Props = {
 
 async function getCategory(slug: string) {
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
-      ? `${process.env.NEXT_PUBLIC_SITE_URL}`
-      : 'http://localhost:3000';
-    const res = await fetch(`${baseUrl}/api/categories?slug=${slug}`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return null;
-    const json = await res.json();
-    const categories = json.data || json || [];
-    return Array.isArray(categories) ? categories.find((c: any) => c.slug === slug) || null : null;
-  } catch {
+    const { adminDb } = await import('@/lib/firebase/admin');
+    if (!adminDb) return null;
+
+    const snap = await adminDb
+      .collection('categories')
+      .where('slug', '==', slug)
+      .limit(1)
+      .get();
+
+    if (snap.empty) return null;
+    return normalizeDocDates({ id: snap.docs[0].id, ...snap.docs[0].data() }) as unknown as Category;
+  } catch (error) {
+    console.error('Error fetching category for OG:', error);
     return null;
   }
 }
