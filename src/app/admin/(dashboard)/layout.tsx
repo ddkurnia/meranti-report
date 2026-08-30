@@ -30,6 +30,7 @@ import {
   Menu,
   LogOut,
   User,
+  Users,
   ChevronLeft,
   Megaphone,
 } from 'lucide-react';
@@ -40,6 +41,7 @@ const menuItems = [
   { label: 'Kategori', href: '/admin/kategori', icon: FolderOpen, roles: ['super_admin', 'editor'] },
   { label: 'Media', href: '/admin/media', icon: Image, roles: ['super_admin', 'editor', 'author'] },
   { label: 'Penulis', href: '/admin/author', icon: PenTool, roles: ['super_admin', 'editor'] },
+  { label: 'Redaksi', href: '/admin/redaksi', icon: Users, roles: ['super_admin', 'editor'] },
   { label: 'Komentar', href: '/admin/komentar', icon: MessageSquare, roles: ['super_admin', 'editor'] },
   { label: 'Iklan', href: '/admin/iklan', icon: Megaphone, roles: ['super_admin', 'editor'] },
   { label: 'Analitik', href: '/admin/analytics', icon: BarChart3, roles: ['super_admin', 'editor'] },

@@ -5,8 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useTheme } from 'next-themes';
 import { useRealtimeCategories } from '@/hooks/use-realtime';
-import {
-  Menu,
+import {  Menu,
   Search,
   Sun,
   Moon,
@@ -18,6 +17,7 @@ import {
   X,
   Video,
   Camera,
+  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +37,7 @@ const navItems = [
   { label: 'Kategori', href: '/kategori', hasDropdown: true },
   { label: 'Video', href: '/video', icon: Video },
   { label: 'Foto', href: '/foto', icon: Camera },
+  { label: 'Redaksi', href: '/redaksi', icon: Users },
 ];
 
 export function Header() {

@@ -288,14 +288,32 @@ export type AdType = 'leaderboard' | 'sidebar' | 'inline' | 'banner';
 
 export interface AdSlot {
   id: string;
-  slotId: string; // e.g., "slot-1", "slot-2", ... "slot-10"
-  title: string; // e.g., "Header Banner", "Sidebar 1"
-  position: string; // placement description
+  slotId: string;
+  title: string;
+  position: string;
   type: AdType;
   imageUrl?: string;
   linkUrl?: string;
   altText?: string;
   advertiserName?: string;
+  active: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Redaksi (Editorial Team)
+export interface TeamMember {
+  id: string;
+  name: string;
+  position: string;
+  photo?: string;
+  bio?: string;
+  email?: string;
+  phone?: string;
+  facebook?: string;
+  instagram?: string;
+  twitter?: string;
+  order: number;
   active: boolean;
   createdAt: Date;
   updatedAt: Date;

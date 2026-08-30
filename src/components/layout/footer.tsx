@@ -10,6 +10,7 @@ const quickLinks = [
   { label: 'Kategori', href: '/kategori' },
   { label: 'Video', href: '/video' },
   { label: 'Foto', href: '/foto' },
+  { label: 'Redaksi', href: '/redaksi' },
 ];
 
 const legalLinks = [
