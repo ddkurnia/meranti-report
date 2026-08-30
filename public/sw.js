@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meranti-v1';
+const CACHE_NAME = 'meranti-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -33,8 +33,16 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET and cross-origin
   if (request.method !== 'GET' || url.origin !== self.location.origin) return;
 
-  // Skip API calls and admin
-  if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/admin')) return;
+  // Skip API calls, admin, and _next internals (RSC, data, etc.)
+  if (
+    url.pathname.startsWith('/api/') ||
+    url.pathname.startsWith('/admin') ||
+    url.pathname.startsWith('/_next/') ||
+    url.pathname.startsWith('/_rsc/')
+  ) return;
+
+  // Skip Next.js RSC navigation requests (headers used by Next.js client router)
+  if (request.headers.has('RSC') || request.headers.has('Next-Router-State-Tree')) return;
 
   event.respondWith(
     fetch(request)
