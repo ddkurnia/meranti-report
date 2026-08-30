@@ -33,10 +33,11 @@ export default function HomePage() {
   // When there are few articles, include the featured article in the grid too
   const hasManyArticles = (realtimeArticles || []).length > 7;
 
-  // For Berita Terbaru, skip those already in Top News
+  // For Berita Terbaru, only exclude the main featured article when articles are few.
+  // When there are many articles (>7), also exclude supporting articles to avoid duplicates.
   const topNewsIds = new Set([
     featuredArticle?.id,
-    ...supportingArticles.map((a: Article) => a.id),
+    ...(hasManyArticles ? supportingArticles.map((a: Article) => a.id) : []),
   ].filter(Boolean));
 
   const latestArticles = (realtimeArticles || [])
@@ -90,7 +91,8 @@ export default function HomePage() {
           <AdSlotRenderer ads={ads} slotId="slot-2" />
         </div>
 
-        {/* Berita Terbaru */}
+        {/* Berita Terbaru — only show if there are articles to display (beyond Top News) */}
+        {!loading && latestArticles.length === 0 ? null : (
         <section className="mx-auto max-w-7xl px-4 py-8 md:py-10">
           <SectionHeader title="Berita Terbaru" icon={<Newspaper className="h-5 w-5" />} />
           {loading ? (
@@ -124,8 +126,11 @@ export default function HomePage() {
             </>
           )}
         </section>
+        )}
 
+        {!loading && latestArticles.length === 0 ? null : (
         <Separator className="mx-auto max-w-7xl" />
+        )}
 
         {/* ====== SLOT 7: Mid Page 1 (after Berita Terbaru) ====== */}
         <div className="mx-auto max-w-7xl px-4 py-4">
