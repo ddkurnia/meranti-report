@@ -66,6 +66,35 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Meranti Report" />
       </head>
       <body className="min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">
+        {/* Initial splash screen — shown instantly before React hydrates, removed on load */}
+        <div
+          id="initial-splash"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 9999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '16px',
+            background: '#ffffff',
+          }}
+        >
+          <img src="/loading-logo.png" alt="" style={{ width: 96, height: 96, objectFit: 'contain' }} />
+          <div style={{ width: 28, height: 28, border: '3px solid #e5e7eb', borderTopColor: '#dc2626', borderRadius: '50%' }} className="splash-spinner" />
+        </div>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(){
+                var s=document.getElementById('initial-splash');
+                if(!s)return;
+                var st=document.createElement('style');
+                st.textContent='.splash-spinner{animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}';
+                document.head.appendChild(st);
+                function hide(){s.style.transition='opacity .3s';s.style.opacity='0';setTimeout(function(){s.remove()},300)}
+                if(document.readyState==='complete')hide();
+                else window.addEventListener('load',hide);
+                setTimeout(hide,4000);
+              })();
+            `,
+          }}
+        />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
