@@ -6,24 +6,35 @@ export function InitialSplash() {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    const target = ref.current;
+    if (!target) return;
 
     function hide() {
-      const target = ref.current;
-      if (!target) return;
-      target.style.transition = 'opacity 0.3s';
-      target.style.opacity = '0';
-      setTimeout(() => target.remove(), 300);
+      const el = ref.current;
+      if (!el) return;
+      el.style.transition = 'opacity 0.3s';
+      el.style.opacity = '0';
+      setTimeout(() => {
+        el.remove();
+      }, 300);
     }
 
-    if (document.readyState === 'complete') hide();
-    else window.addEventListener('load', hide);
-    // Safety: force hide after 4s even if load event never fires
+    // Hide when page is fully loaded
+    if (document.readyState === 'complete') {
+      hide();
+    } else {
+      window.addEventListener('load', hide);
+    }
+
+    // Safety: force hide after 4s
     const timer = setTimeout(hide, 4000);
+
     return () => {
       window.removeEventListener('load', hide);
       clearTimeout(timer);
+      // Clean up immediately on unmount (client-side navigation)
+      const el = ref.current;
+      if (el) el.remove();
     };
   }, []);
 
