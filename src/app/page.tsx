@@ -116,13 +116,17 @@ export default function HomePage() {
               {/* First row of articles */}
               <NewsGrid articles={firstRow} columns={3} />
 
-              {/* ====== SLOT 3: In-Feed 1 (between article rows) ====== */}
-              <div className="my-6">
-                <AdSlotRenderer ads={ads} slotId="slot-3" />
-              </div>
-
-              {/* Second row of articles */}
-              <NewsGrid articles={secondRow} columns={3} />
+              {/* Second row + in-feed ad — only when there are more than 3 articles */}
+              {secondRow.length > 0 && (
+                <>
+                  {/* ====== SLOT 3: In-Feed 1 (between article rows) ====== */}
+                  <div className="my-6">
+                    <AdSlotRenderer ads={ads} slotId="slot-3" />
+                  </div>
+                  {/* Second row of articles */}
+                  <NewsGrid articles={secondRow} columns={3} />
+                </>
+              )}
             </>
           )}
         </section>
