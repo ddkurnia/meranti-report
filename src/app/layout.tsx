@@ -5,6 +5,8 @@ import { AuthProvider } from '@/hooks/use-auth';
 import { Toaster } from '@/components/ui/toaster';
 import { JsonLd } from '@/components/seo/json-ld';
 import { generateOrganizationSchema, generateWebSiteSchema } from '@/lib/seo';
+import { PwaInstallButton } from '@/components/pwa/install-button';
+import { ServiceWorkerRegistrar } from '@/components/pwa/service-worker-registrar';
 
 export const metadata: Metadata = {
   title: {
@@ -13,6 +15,7 @@ export const metadata: Metadata = {
   },
   description: 'Portal berita lokal terpercaya di Kepulauan Meranti. Menyajikan informasi terkini, akurat, dan terpercaya.',
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://merantireport.com'),
+  manifest: '/manifest.json',
   icons: {
     icon: [
       { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
@@ -56,6 +59,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="id" suppressHydrationWarning>
+      <head>
+        <meta name="theme-color" content="#dc2626" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Meranti Report" />
+      </head>
       <body className="min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">
         <ThemeProvider
           attribute="class"
@@ -66,9 +75,11 @@ export default function RootLayout({
           <AuthProvider>
             <JsonLd schemas={[generateOrganizationSchema(), generateWebSiteSchema()]} />
             {children}
+            <PwaInstallButton />
             <Toaster />
           </AuthProvider>
         </ThemeProvider>
+        <ServiceWorkerRegistrar />
       </body>
     </html>
   );
