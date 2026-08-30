@@ -25,12 +25,23 @@ export default function HomePage() {
       ? realtimeArticles[0]
       : null;
 
+  // Supporting articles for Top News (exclude main)
+  const supportingArticles = (realtimeArticles || [])
+    .filter((a: Article) => a.id !== featuredArticle?.id)
+    .slice(0, 4);
+
   // When there are few articles, include the featured article in the grid too
   const hasManyArticles = (realtimeArticles || []).length > 7;
 
-  const latestArticles = hasManyArticles
-    ? (realtimeArticles || []).filter((a: Article) => a.id !== featuredArticle?.id).slice(0, 6)
-    : (realtimeArticles || []).slice(0, 6);
+  // For Berita Terbaru, skip those already in Top News
+  const topNewsIds = new Set([
+    featuredArticle?.id,
+    ...supportingArticles.map((a: Article) => a.id),
+  ].filter(Boolean));
+
+  const latestArticles = (realtimeArticles || [])
+    .filter((a: Article) => !topNewsIds.has(a.id))
+    .slice(0, 6);
 
   const popularArticles = [...(realtimeArticles || [])]
     .sort((a: Article, b: Article) => (b.views || 0) - (a.views || 0))
@@ -58,11 +69,20 @@ export default function HomePage() {
           <AdSlotRenderer ads={ads} slotId="slot-1" />
         </div>
 
-        {/* Hero Section */}
+        {/* Top News Section */}
         {loading ? (
-          <Skeleton className="w-full h-[50vh] sm:h-[60vh] md:h-[65vh]" />
+          <div className="mx-auto max-w-7xl px-4 py-4 md:py-6">
+            <Skeleton className="h-5 w-28 mb-4" />
+            <div className="grid md:grid-cols-5 gap-4">
+              <Skeleton className="md:col-span-3 h-[300px] md:h-[350px] lg:h-[450px] rounded-xl" />
+              <div className="md:col-span-2 grid grid-rows-2 gap-4">
+                <Skeleton className="rounded-xl" />
+                <Skeleton className="rounded-xl" />
+              </div>
+            </div>
+          </div>
         ) : featuredArticle ? (
-          <NewsHero article={featuredArticle} />
+          <NewsHero article={featuredArticle} supporting={supportingArticles} />
         ) : null}
 
         {/* ====== SLOT 2: After Hero ====== */}
