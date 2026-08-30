@@ -7,7 +7,6 @@ import { JsonLd } from '@/components/seo/json-ld';
 import { generateOrganizationSchema, generateWebSiteSchema } from '@/lib/seo';
 import { PwaInstallButton } from '@/components/pwa/install-button';
 import { ServiceWorkerRegistrar } from '@/components/pwa/service-worker-registrar';
-import { InitialSplash } from '@/components/ui/initial-splash';
 
 export const metadata: Metadata = {
   title: {
@@ -67,7 +66,6 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Meranti Report" />
       </head>
       <body className="min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 antialiased">
-        <InitialSplash />
         <ThemeProvider
           attribute="class"
           defaultTheme="light"
