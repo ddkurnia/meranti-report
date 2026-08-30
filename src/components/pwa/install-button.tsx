@@ -62,7 +62,7 @@ export function PwaInstallButton() {
     <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-slide-up">
       <div className="flex items-center gap-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl px-4 py-3 pr-2">
         <img
-          src="/icon-192.png"
+          src="/pwa-icon.png"
           alt="Meranti Report"
           className="w-10 h-10 rounded-xl"
         />
