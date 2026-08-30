@@ -64,7 +64,7 @@ export function PwaInstallButton() {
         <img
           src="/pwa-icon.png"
           alt="Meranti Report"
-          className="w-10 h-10 rounded-xl"
+          className="w-12 h-12 rounded-xl object-cover"
         />
         <div className="hidden sm:block">
           <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight">
