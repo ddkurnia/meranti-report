@@ -78,7 +78,7 @@ export function NewsletterSection() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="h-11 bg-[#1a2332] hover:bg-[#243044] gap-2 shrink-0"
+                className="h-11 bg-[var(--site-primary,#1a2332)] hover:opacity-90 gap-2 shrink-0"
               >
                 {loading ? (
                   <span className="flex items-center gap-2">

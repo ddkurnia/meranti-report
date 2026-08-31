@@ -92,7 +92,7 @@ export default function FotoPage() {
       <Header />
 
       <main className="flex-1">
-        <div className="bg-[#1a2332] py-8">
+        <div className="bg-[var(--site-primary,#1a2332)] py-8">
           <div className="mx-auto max-w-7xl px-4">
             <div className="flex items-center gap-3">
               <Camera className="h-7 w-7 text-red-500" />

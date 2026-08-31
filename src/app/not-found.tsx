@@ -10,7 +10,7 @@ export default function NotFound() {
       <Header />
       <main className="flex-1 flex flex-col items-center justify-center py-20 px-4">
         <div className="text-center">
-          <h1 className="text-8xl sm:text-9xl font-black tracking-tighter text-[#1a2332] dark:text-gray-600">
+          <h1 className="text-8xl sm:text-9xl font-black tracking-tighter text-[var(--site-primary,#1a2332)] dark:text-gray-600">
             404
           </h1>
           <h2 className="text-2xl sm:text-3xl font-bold mt-2">Halaman Tidak Ditemukan</h2>
@@ -19,7 +19,7 @@ export default function NotFound() {
             Silakan kembali ke halaman utama.
           </p>
           <Link href="/">
-            <Button className="mt-8 gap-2 bg-[#1a2332] hover:bg-[#2a3a52]">
+            <Button className="mt-8 gap-2 bg-[var(--site-primary,#1a2332)] hover:opacity-90">
               <ArrowLeft className="h-4 w-4" />
               Kembali ke Beranda
             </Button>

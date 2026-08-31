@@ -13,7 +13,7 @@ export default function VideoPage() {
 
       <main className="flex-1">
         {/* Page Header */}
-        <div className="bg-[#1a2332] py-8">
+        <div className="bg-[var(--site-primary,#1a2332)] py-8">
           <div className="mx-auto max-w-7xl px-4">
             <div className="flex items-center gap-3">
               <Video className="h-7 w-7 text-red-500" />

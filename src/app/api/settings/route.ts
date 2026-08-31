@@ -21,11 +21,55 @@ export async function GET(request: NextRequest) {
 
     if (!doc.exists) {
       return successResponse({
-        siteName: 'Meranti Report',
-        siteDescription: 'Portal Berita Kepulauan Meranti',
-        siteUrl: process.env.NEXT_PUBLIC_SITE_URL || 'https://merantireport.com',
-        locale: 'id_ID',
-        theme: 'light',
+        general: {
+          siteName: 'Meranti Report',
+          tagline: 'Kabar Meranti, Dari Kita Untuk Kita',
+          description: 'Portal berita lokal terpercaya di Kepulauan Meranti. Menyajikan informasi terkini, akurat, dan terpercaya.',
+          email: 'redaksi@merantireport.com',
+          phone: '+62 812-3456-7890',
+          address: 'Jl. Merdeka No. 1, Selat Panjang, Kepulauan Meranti, Riau',
+          logo: '',
+          favicon: '',
+        },
+        appearance: {
+          primaryColor: '#1a2332',
+          accentColor: '#dc2626',
+          darkMode: false,
+          layout: 'default',
+        },
+        homepage: {
+          latestNewsCount: 10,
+          popularNewsCount: 5,
+          showBreakingNews: true,
+          showGallery: false,
+          showVideo: false,
+          showNewsletter: true,
+        },
+        socialMedia: {
+          facebook: '',
+          instagram: '',
+          tiktok: '',
+          youtube: '',
+          whatsapp: '',
+          twitter: '',
+        },
+        seo: {
+          defaultTitle: 'Meranti Report - Kabar Meranti, Dari Kita Untuk Kita',
+          metaDescription: 'Portal berita lokal terpercaya di Kepulauan Meranti. Menyajikan informasi terkini, akurat, dan terpercaya.',
+          ogImage: '',
+          googleVerification: '',
+          robotsConfig: '',
+        },
+        advertisement: {
+          headerAd: { enabled: false },
+          homepageAd: { enabled: false },
+          articleAd: { enabled: false },
+          sidebarAd: { enabled: false },
+        },
+        comments: {
+          enabled: true,
+          requireApproval: false,
+        },
       });
     }
 

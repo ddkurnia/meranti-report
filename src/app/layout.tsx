@@ -2,11 +2,13 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/layout/theme-provider';
 import { AuthProvider } from '@/hooks/use-auth';
+import { SiteSettingsProvider } from '@/contexts/site-settings';
 import { Toaster } from '@/components/ui/toaster';
 import { JsonLd } from '@/components/seo/json-ld';
 import { generateOrganizationSchema, generateWebSiteSchema } from '@/lib/seo';
 import { PwaInstallButton } from '@/components/pwa/install-button';
 import { ServiceWorkerRegistrar } from '@/components/pwa/service-worker-registrar';
+import { DynamicThemeColor } from '@/components/layout/dynamic-theme-color';
 
 export const metadata: Metadata = {
   title: {
@@ -73,10 +75,13 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <JsonLd schemas={[generateOrganizationSchema(), generateWebSiteSchema()]} />
-            {children}
-            <PwaInstallButton />
-            <Toaster />
+            <SiteSettingsProvider>
+              <DynamicThemeColor />
+              <JsonLd schemas={[generateOrganizationSchema(), generateWebSiteSchema()]} />
+              {children}
+              <PwaInstallButton />
+              <Toaster />
+            </SiteSettingsProvider>
           </AuthProvider>
         </ThemeProvider>
         <ServiceWorkerRegistrar />

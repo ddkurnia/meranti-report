@@ -27,7 +27,7 @@ export default function Error({
             Coba Lagi
           </Button>
           <Link href="/">
-            <Button className="gap-2 bg-[#1a2332] hover:bg-[#2a3a52]">
+            <Button className="gap-2 bg-[var(--site-primary,#1a2332)] hover:opacity-90">
               <Home className="h-4 w-4" />
               Beranda
             </Button>
