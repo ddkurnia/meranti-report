@@ -80,9 +80,9 @@ service cloud.firestore {
       allow update: if isSuperAdmin();
     }
 
-    // Settings - only readable/writable by super admin
+    // Settings - publicly readable, writable only by super admin
     match /settings/{settingsId} {
-      allow read: if isSuperAdmin();
+      allow read: if true;
       allow write: if isSuperAdmin();
     }
   }

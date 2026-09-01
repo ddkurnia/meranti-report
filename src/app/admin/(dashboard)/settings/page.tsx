@@ -30,17 +30,17 @@ import type { SiteSettings } from '@/types';
 const defaultSettings: SiteSettings = {
   general: {
     siteName: 'Meranti Report',
-    tagline: '',
-    description: '',
-    email: '',
-    phone: '',
-    address: '',
+    tagline: 'Kabar Meranti, Dari Kita Untuk Kita',
+    description: 'Portal berita lokal terpercaya di Kepulauan Meranti. Menyajikan informasi terkini, akurat, dan terpercaya.',
+    email: 'redaksi@merantireport.com',
+    phone: '+62 812-3456-7890',
+    address: 'Jl. Merdeka No. 1, Selat Panjang, Kepulauan Meranti, Riau',
     logo: '',
     favicon: '',
   },
   appearance: {
-    primaryColor: '#000000',
-    accentColor: '#f59e0b',
+    primaryColor: '#1a2332',
+    accentColor: '#dc2626',
     darkMode: false,
     layout: 'default',
   },
@@ -61,11 +61,11 @@ const defaultSettings: SiteSettings = {
     twitter: '',
   },
   seo: {
-    defaultTitle: '',
-    metaDescription: '',
+    defaultTitle: 'Meranti Report - Kabar Meranti, Dari Kita Untuk Kita',
+    metaDescription: 'Portal berita lokal terpercaya di Kepulauan Meranti. Menyajikan informasi terkini, akurat, dan terpercaya.',
     ogImage: '',
     googleVerification: '',
-    robotsConfig: 'User-agent: *\nAllow: /',
+    robotsConfig: '',
   },
   advertisement: {
     headerAd: { enabled: false, script: '', image: '', link: '' },
@@ -75,9 +75,9 @@ const defaultSettings: SiteSettings = {
   },
   comments: {
     enabled: true,
-    requireApproval: true,
+    requireApproval: false,
   },
-};
+  };
 
 export default function AdminSettingsPage() {
   const { toast } = useToast();
@@ -114,8 +114,8 @@ export default function AdminSettingsPage() {
                 email: data.general?.email ?? defaultSettings.general.email,
                 phone: data.general?.phone ?? defaultSettings.general.phone,
                 address: data.general?.address ?? defaultSettings.general.address,
-                logo: data.general?.logo,
-                favicon: data.general?.favicon,
+                logo: data.general?.logo || '',
+                favicon: data.general?.favicon || '',
               },
               appearance: {
                 primaryColor: data.appearance?.primaryColor ?? defaultSettings.appearance.primaryColor,
@@ -132,18 +132,18 @@ export default function AdminSettingsPage() {
                 showNewsletter: data.homepage?.showNewsletter ?? defaultSettings.homepage.showNewsletter,
               },
               socialMedia: {
-                facebook: data.socialMedia?.facebook,
-                instagram: data.socialMedia?.instagram,
-                tiktok: data.socialMedia?.tiktok,
-                youtube: data.socialMedia?.youtube,
-                whatsapp: data.socialMedia?.whatsapp,
-                twitter: data.socialMedia?.twitter,
+                facebook: data.socialMedia?.facebook || '',
+                instagram: data.socialMedia?.instagram || '',
+                tiktok: data.socialMedia?.tiktok || '',
+                youtube: data.socialMedia?.youtube || '',
+                whatsapp: data.socialMedia?.whatsapp || '',
+                twitter: data.socialMedia?.twitter || '',
               },
               seo: {
                 defaultTitle: data.seo?.defaultTitle ?? defaultSettings.seo.defaultTitle,
                 metaDescription: data.seo?.metaDescription ?? defaultSettings.seo.metaDescription,
-                ogImage: data.seo?.ogImage,
-                googleVerification: data.seo?.googleVerification,
+                ogImage: data.seo?.ogImage || '',
+                googleVerification: data.seo?.googleVerification || '',
                 robotsConfig: data.seo?.robotsConfig ?? defaultSettings.seo.robotsConfig,
               },
               advertisement: {
@@ -210,6 +210,10 @@ export default function AdminSettingsPage() {
   };
 
   const updateAppearance = (key: keyof SiteSettings['appearance'], value: string | boolean) => {
+    // Validate hex color for color fields
+    if (key === 'primaryColor' || key === 'accentColor') {
+      if (typeof value === 'string' && !/^#[0-9a-fA-F]{6}$/.test(value)) return;
+    }
     setSettings((prev) => ({ ...prev, appearance: { ...prev.appearance, [key]: value } }));
   };
 
@@ -425,7 +429,7 @@ export default function AdminSettingsPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="primary-color">Warna Utama</Label>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   <input
                     type="color"
                     value={settings.appearance.primaryColor}
@@ -436,12 +440,19 @@ export default function AdminSettingsPage() {
                     id="primary-color"
                     value={settings.appearance.primaryColor}
                     onChange={(e) => updateAppearance('primaryColor', e.target.value)}
+                    maxLength={7}
+                    placeholder="#000000"
+                  />
+                  <div
+                    className="h-10 w-10 rounded border shrink-0"
+                    style={{ backgroundColor: settings.appearance.primaryColor }}
+                    title="Preview warna utama"
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="accent-color">Warna Aksen</Label>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
                   <input
                     type="color"
                     value={settings.appearance.accentColor}
@@ -452,6 +463,13 @@ export default function AdminSettingsPage() {
                     id="accent-color"
                     value={settings.appearance.accentColor}
                     onChange={(e) => updateAppearance('accentColor', e.target.value)}
+                    maxLength={7}
+                    placeholder="#000000"
+                  />
+                  <div
+                    className="h-10 w-10 rounded border shrink-0"
+                    style={{ backgroundColor: settings.appearance.accentColor }}
+                    title="Preview warna aksen"
                   />
                 </div>
               </div>
