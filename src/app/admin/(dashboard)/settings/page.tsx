@@ -106,16 +106,18 @@ export default function AdminSettingsPage() {
         (snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.data();
+            // Support both old flat schema and new nested schema
+            const raw = data as Record<string, any>;
             setSettings({
               general: {
-                siteName: data.general?.siteName ?? defaultSettings.general.siteName,
-                tagline: data.general?.tagline ?? defaultSettings.general.tagline,
-                description: data.general?.description ?? defaultSettings.general.description,
-                email: data.general?.email ?? defaultSettings.general.email,
-                phone: data.general?.phone ?? defaultSettings.general.phone,
-                address: data.general?.address ?? defaultSettings.general.address,
-                logo: data.general?.logo || '',
-                favicon: data.general?.favicon || '',
+                siteName: raw.general?.siteName || raw.siteName || defaultSettings.general.siteName,
+                tagline: raw.general?.tagline || defaultSettings.general.tagline,
+                description: raw.general?.description || raw.siteDescription || defaultSettings.general.description,
+                email: raw.general?.email || raw.contactEmail || defaultSettings.general.email,
+                phone: raw.general?.phone || raw.contactPhone || defaultSettings.general.phone,
+                address: raw.general?.address || raw.contactAddress || defaultSettings.general.address,
+                logo: raw.general?.logo || raw.logo || '',
+                favicon: raw.general?.favicon || raw.favicon || '',
               },
               appearance: {
                 primaryColor: data.appearance?.primaryColor ?? defaultSettings.appearance.primaryColor,
@@ -132,12 +134,12 @@ export default function AdminSettingsPage() {
                 showNewsletter: data.homepage?.showNewsletter ?? defaultSettings.homepage.showNewsletter,
               },
               socialMedia: {
-                facebook: data.socialMedia?.facebook || '',
-                instagram: data.socialMedia?.instagram || '',
-                tiktok: data.socialMedia?.tiktok || '',
-                youtube: data.socialMedia?.youtube || '',
-                whatsapp: data.socialMedia?.whatsapp || '',
-                twitter: data.socialMedia?.twitter || '',
+                facebook: raw.socialMedia?.facebook || raw.facebook || '',
+                instagram: raw.socialMedia?.instagram || raw.instagram || '',
+                tiktok: raw.socialMedia?.tiktok || raw.tiktok || '',
+                youtube: raw.socialMedia?.youtube || raw.youtube || '',
+                whatsapp: raw.socialMedia?.whatsapp || raw.whatsapp || '',
+                twitter: raw.socialMedia?.twitter || raw.twitter || '',
               },
               seo: {
                 defaultTitle: data.seo?.defaultTitle ?? defaultSettings.seo.defaultTitle,
@@ -187,7 +189,19 @@ export default function AdminSettingsPage() {
 
   const { fetchWithAuth } = useAuth();
 
+  const isValidHex = (v: string) => /^#[0-9a-fA-F]{6}$/.test(v);
+
   const saveSection = async (section: string) => {
+    // Validate color fields before saving
+    if (!isValidHex(settings.appearance.primaryColor)) {
+      toast({ title: 'Warna Tidak Valid', description: 'Warna utama harus format hex (#RRGGBB).', variant: 'destructive' });
+      return;
+    }
+    if (!isValidHex(settings.appearance.accentColor)) {
+      toast({ title: 'Warna Tidak Valid', description: 'Warna aksen harus format hex (#RRGGBB).', variant: 'destructive' });
+      return;
+    }
+
     setSaving(section);
     try {
       const res = await fetchWithAuth('/api/settings', {
@@ -210,11 +224,21 @@ export default function AdminSettingsPage() {
   };
 
   const updateAppearance = (key: keyof SiteSettings['appearance'], value: string | boolean) => {
-    // Validate hex color for color fields
-    if (key === 'primaryColor' || key === 'accentColor') {
-      if (typeof value === 'string' && !/^#[0-9a-fA-F]{6}$/.test(value)) return;
-    }
     setSettings((prev) => ({ ...prev, appearance: { ...prev.appearance, [key]: value } }));
+  };
+
+  const handleColorBlur = (key: 'primaryColor' | 'accentColor', currentValue: string) => {
+    if (currentValue && !isValidHex(currentValue)) {
+      toast({ title: 'Format Tidak Valid', description: 'Gunakan format hex #RRGGBB (contoh: #1a2332).', variant: 'destructive' });
+      // Revert to the default if invalid
+      setSettings((prev) => ({
+        ...prev,
+        appearance: {
+          ...prev.appearance,
+          [key]: key === 'primaryColor' ? '#1a2332' : '#dc2626',
+        },
+      }));
+    }
   };
 
   const updateHomepage = (key: keyof SiteSettings['homepage'], value: number | boolean) => {
@@ -440,6 +464,7 @@ export default function AdminSettingsPage() {
                     id="primary-color"
                     value={settings.appearance.primaryColor}
                     onChange={(e) => updateAppearance('primaryColor', e.target.value)}
+                    onBlur={() => handleColorBlur('primaryColor', settings.appearance.primaryColor)}
                     maxLength={7}
                     placeholder="#000000"
                   />
@@ -463,6 +488,7 @@ export default function AdminSettingsPage() {
                     id="accent-color"
                     value={settings.appearance.accentColor}
                     onChange={(e) => updateAppearance('accentColor', e.target.value)}
+                    onBlur={() => handleColorBlur('accentColor', settings.appearance.accentColor)}
                     maxLength={7}
                     placeholder="#000000"
                   />

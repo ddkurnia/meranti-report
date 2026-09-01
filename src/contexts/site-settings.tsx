@@ -99,17 +99,19 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
           if (!mountedRef.current) return;
           if (snapshot.exists()) {
             const data = snapshot.data();
+            // Support both old flat schema and new nested schema
+            const raw = data as Record<string, any>;
             setSettings({
               general: {
-                siteName: data.general?.siteName ?? defaultSettings.general.siteName,
-                tagline: data.general?.tagline ?? defaultSettings.general.tagline,
+                siteName: raw.general?.siteName || raw.siteName || defaultSettings.general.siteName,
+                tagline: raw.general?.tagline || defaultSettings.general.tagline,
                 description:
-                  data.general?.description ?? defaultSettings.general.description,
-                email: data.general?.email ?? defaultSettings.general.email,
-                phone: data.general?.phone ?? defaultSettings.general.phone,
-                address: data.general?.address ?? defaultSettings.general.address,
-                logo: data.general?.logo || '',
-                favicon: data.general?.favicon || '',
+                  raw.general?.description || raw.siteDescription || defaultSettings.general.description,
+                email: raw.general?.email || raw.contactEmail || defaultSettings.general.email,
+                phone: raw.general?.phone || raw.contactPhone || defaultSettings.general.phone,
+                address: raw.general?.address || raw.contactAddress || defaultSettings.general.address,
+                logo: raw.general?.logo || raw.logo || '',
+                favicon: raw.general?.favicon || raw.favicon || '',
               },
               appearance: {
                 primaryColor:
@@ -144,12 +146,12 @@ export function SiteSettingsProvider({ children }: { children: ReactNode }) {
                   defaultSettings.homepage.showNewsletter,
               },
               socialMedia: {
-                facebook: data.socialMedia?.facebook || '',
-                instagram: data.socialMedia?.instagram || '',
-                tiktok: data.socialMedia?.tiktok || '',
-                youtube: data.socialMedia?.youtube || '',
-                whatsapp: data.socialMedia?.whatsapp || '',
-                twitter: data.socialMedia?.twitter || '',
+                facebook: raw.socialMedia?.facebook || raw.facebook || '',
+                instagram: raw.socialMedia?.instagram || raw.instagram || '',
+                tiktok: raw.socialMedia?.tiktok || raw.tiktok || '',
+                youtube: raw.socialMedia?.youtube || raw.youtube || '',
+                whatsapp: raw.socialMedia?.whatsapp || raw.whatsapp || '',
+                twitter: raw.socialMedia?.twitter || raw.twitter || '',
               },
               seo: {
                 defaultTitle:
