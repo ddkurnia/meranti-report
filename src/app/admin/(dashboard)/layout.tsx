@@ -242,7 +242,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link href="/admin/settings" className="cursor-pointer">
+                  <Link href="/admin/profile" className="cursor-pointer">
                     <User className="mr-2 h-4 w-4" />
                     Profil
                   </Link>
