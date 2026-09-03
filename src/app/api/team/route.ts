@@ -18,14 +18,16 @@ export async function GET() {
 
     const snap = await adminDb
       .collection('team')
-      .where('active', '==', true)
       .orderBy('order', 'asc')
       .get();
 
-    const members = snap.docs.map((d) => normalizeDocDates({ id: d.id, ...d.data() }));
+    // Filter active members in JS to avoid needing a composite Firestore index
+    const members = snap.docs
+      .map((d) => normalizeDocDates({ id: d.id, ...d.data() }))
+      .filter((m: Record<string, any>) => m.active !== false);
     return successResponse(members);
   } catch (error) {
-    console.error('Error fetching team:', error);
+    console.error('Error fetching team:', error instanceof Error ? error.message : error);
     return errorResponse('Failed to fetch team');
   }
 }
