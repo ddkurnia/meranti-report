@@ -2,9 +2,19 @@ import type { Metadata } from 'next';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://merantireport.com';
+
 export const metadata: Metadata = {
-  title: 'Syarat & Ketentuan - Meranti Report',
+  title: 'Syarat & Ketentuan',
   description: 'Syarat dan ketentuan penggunaan layanan Meranti Report. Baca sebelum menggunakan situs berita kami.',
+  alternates: { canonical: `${SITE_URL}/syarat-ketentuan` },
+  openGraph: {
+    title: 'Syarat & Ketentuan - Meranti Report',
+    description: 'Syarat dan ketentuan penggunaan layanan Meranti Report.',
+    url: `${SITE_URL}/syarat-ketentuan`,
+    siteName: 'Meranti Report',
+    type: 'website',
+  },
 };
 
 export default function SyaratKetentuanPage() {

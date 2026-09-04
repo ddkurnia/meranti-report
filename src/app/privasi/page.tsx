@@ -2,9 +2,19 @@ import type { Metadata } from 'next';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://merantireport.com';
+
 export const metadata: Metadata = {
-  title: 'Kebijakan Privasi - Meranti Report',
+  title: 'Kebijakan Privasi',
   description: 'Kebijakan privasi Meranti Report. Pelajari bagaimana kami mengumpulkan, menggunakan, dan melindungi data pribadi Anda.',
+  alternates: { canonical: `${SITE_URL}/privasi` },
+  openGraph: {
+    title: 'Kebijakan Privasi - Meranti Report',
+    description: 'Kebijakan privasi Meranti Report.',
+    url: `${SITE_URL}/privasi`,
+    siteName: 'Meranti Report',
+    type: 'website',
+  },
 };
 
 export default function KebijakanPrivasiPage() {

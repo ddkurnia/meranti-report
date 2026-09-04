@@ -160,19 +160,33 @@ export function generateBreadcrumbSchema(items: { name: string; url: string }[])
   };
 }
 
-export function generateOrganizationSchema() {
+export function generateOrganizationSchema(settings?: SiteSettings) {
+  // Build sameAs array from social media settings
+  const sameAs: string[] = [];
+  if (settings?.socialMedia?.facebook) sameAs.push(settings.socialMedia.facebook);
+  if (settings?.socialMedia?.instagram) sameAs.push(settings.socialMedia.instagram);
+  if (settings?.socialMedia?.twitter) sameAs.push(settings.socialMedia.twitter);
+  if (settings?.socialMedia?.youtube) sameAs.push(settings.socialMedia.youtube);
+  if (settings?.socialMedia?.tiktok) sameAs.push(settings.socialMedia.tiktok);
+  if (settings?.socialMedia?.whatsapp) sameAs.push(settings.socialMedia.whatsapp);
+
+  const email = settings?.general?.email || 'redaksi@merantireport.com';
+  const phone = settings?.general?.phone;
+
   return {
     '@context': 'https://schema.org',
     '@type': 'NewsMediaOrganization',
     name: SITE_NAME,
     url: SITE_URL,
     logo: `${SITE_URL}/logo.png`,
-    sameAs: [],
+    sameAs,
     contactPoint: {
       '@type': 'ContactPoint',
       contactType: 'editorial',
-      email: 'redaksi@merantireport.com',
+      email,
+      ...(phone ? { telephone: phone } : {}),
     },
+    ...(settings?.general?.address ? { address: settings.general.address } : {}),
   };
 }
 
@@ -182,10 +196,43 @@ export function generateWebSiteSchema() {
     '@type': 'WebSite',
     name: SITE_NAME,
     url: SITE_URL,
+    inLanguage: 'id',
     potentialAction: {
       '@type': 'SearchAction',
-      target: `${SITE_URL}/search?q={search_term_string}`,
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
+      },
       'query-input': 'required name=search_term_string',
     },
+  };
+}
+
+export function generateCollectionPageSchema(title: string, description: string, url: string, itemCount?: number) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: title,
+    description,
+    url,
+    ...(itemCount !== undefined ? { numberOfItems: itemCount } : {}),
+    mainEntity: {
+      '@type': 'ItemList',
+      numberOfItems: itemCount,
+    },
+  };
+}
+
+export function generateImageGallerySchema(images: { url: string; caption?: string }[]) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'ImageGallery',
+    name: 'Galeri Foto Meranti Report',
+    url: `${SITE_URL}/foto`,
+    associatedMedia: images.map((img) => ({
+      '@type': 'ImageObject',
+      contentUrl: img.url,
+      caption: img.caption || '',
+    })),
   };
 }

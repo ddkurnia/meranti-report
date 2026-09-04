@@ -2,9 +2,19 @@ import type { Metadata } from 'next';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://merantireport.com';
+
 export const metadata: Metadata = {
-  title: 'Pedoman Media - Meranti Report',
+  title: 'Pedoman Media',
   description: 'Pedoman media dan jurnalistik Meranti Report. Standar yang kami pegang dalam produksi berita yang akurat dan berintegritas.',
+  alternates: { canonical: `${SITE_URL}/pedoman-media` },
+  openGraph: {
+    title: 'Pedoman Media - Meranti Report',
+    description: 'Pedoman media dan jurnalistik Meranti Report.',
+    url: `${SITE_URL}/pedoman-media`,
+    siteName: 'Meranti Report',
+    type: 'website',
+  },
 };
 
 export default function PedomanMediaPage() {

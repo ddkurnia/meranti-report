@@ -4,11 +4,12 @@ import { ThemeProvider } from '@/components/layout/theme-provider';
 import { AuthProvider } from '@/hooks/use-auth';
 import { SiteSettingsProvider } from '@/contexts/site-settings';
 import { Toaster } from '@/components/ui/toaster';
-import { JsonLd } from '@/components/seo/json-ld';
-import { generateOrganizationSchema, generateWebSiteSchema } from '@/lib/seo';
+import { StructuredData } from '@/components/seo/structured-data';
 import { PwaInstallButton } from '@/components/pwa/install-button';
 import { ServiceWorkerRegistrar } from '@/components/pwa/service-worker-registrar';
 import { DynamicThemeColor } from '@/components/layout/dynamic-theme-color';
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://merantireport.com';
 
 export const metadata: Metadata = {
   title: {
@@ -16,7 +17,10 @@ export const metadata: Metadata = {
     template: '%s - Meranti Report',
   },
   description: 'Portal berita lokal terpercaya di Kepulauan Meranti. Menyajikan informasi terkini, akurat, dan terpercaya.',
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://merantireport.com'),
+  metadataBase: new URL(SITE_URL),
+  alternates: {
+    canonical: SITE_URL,
+  },
   manifest: '/manifest.json',
   icons: {
     icon: [
@@ -28,8 +32,9 @@ export const metadata: Metadata = {
     ],
   },
   openGraph: {
-    title: 'Meranti Report',
+    title: 'Meranti Report - Kabar Meranti, Dari Kita Untuk Kita',
     description: 'Portal berita lokal terpercaya di Kepulauan Meranti. Menyajikan informasi terkini, akurat, dan terpercaya.',
+    url: SITE_URL,
     siteName: 'Meranti Report',
     type: 'website',
     locale: 'id_ID',
@@ -52,6 +57,7 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
+  category: 'News Media',
 };
 
 export default function RootLayout({
@@ -77,7 +83,7 @@ export default function RootLayout({
           <AuthProvider>
             <SiteSettingsProvider>
               <DynamicThemeColor />
-              <JsonLd schemas={[generateOrganizationSchema(), generateWebSiteSchema()]} />
+              <StructuredData />
               {children}
               <PwaInstallButton />
               <Toaster />

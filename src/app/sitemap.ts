@@ -13,46 +13,67 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 1.0,
   });
 
-  try {
-    // Fetch all published articles
-    const articlesRes = await fetch(`${SITE_URL}/api/articles?limit=100`, {
-      next: { revalidate: 3600 },
+  // Static pages
+  const staticPages: { path: string; changefreq: MetadataRoute.Sitemap[0]['changeFrequency']; priority: number }[] = [
+    { path: '/kategori', changefreq: 'weekly', priority: 0.7 },
+    { path: '/redaksi', changefreq: 'monthly', priority: 0.5 },
+    { path: '/foto', changefreq: 'daily', priority: 0.6 },
+    { path: '/video', changefreq: 'daily', priority: 0.6 },
+    { path: '/pedoman-media', changefreq: 'yearly', priority: 0.3 },
+    { path: '/privasi', changefreq: 'yearly', priority: 0.2 },
+    { path: '/syarat-ketentuan', changefreq: 'yearly', priority: 0.2 },
+  ];
+
+  for (const page of staticPages) {
+    entries.push({
+      url: `${SITE_URL}${page.path}`,
+      lastModified: new Date(),
+      changeFrequency: page.changefreq,
+      priority: page.priority,
     });
+  }
 
-    if (articlesRes.ok) {
-      const articlesData = await articlesRes.json();
-      const articles = articlesData.data || articlesData || [];
+  try {
+    const { adminDb } = await import('@/lib/firebase/admin');
 
-      for (const article of articles) {
+    if (adminDb) {
+      // Fetch ALL published articles (no limit cap)
+      const articlesSnap = await adminDb
+        .collection('articles')
+        .where('status', '==', 'published')
+        .orderBy('updatedAt', 'desc')
+        .get();
+
+      for (const doc of articlesSnap.docs) {
+        const data = doc.data();
+        const updatedAt = data.updatedAt?.toDate?.() || data.updatedAt ? new Date(data.updatedAt) : new Date();
         entries.push({
-          url: `${SITE_URL}/berita/${article.slug}`,
-          lastModified: new Date(article.updatedAt || article.createdAt),
+          url: `${SITE_URL}/berita/${data.slug}`,
+          lastModified: updatedAt,
           changeFrequency: 'daily',
           priority: 0.8,
         });
       }
-    }
 
-    // Fetch all categories
-    const categoriesRes = await fetch(`${SITE_URL}/api/categories`, {
-      next: { revalidate: 3600 },
-    });
+      // Fetch all categories
+      const categoriesSnap = await adminDb
+        .collection('categories')
+        .get();
 
-    if (categoriesRes.ok) {
-      const categoriesData = await categoriesRes.json();
-      const categories = categoriesData.data || categoriesData || [];
-
-      for (const category of categories) {
+      for (const doc of categoriesSnap.docs) {
+        const data = doc.data();
+        const updatedAt = data.updatedAt?.toDate?.() || data.updatedAt ? new Date(data.updatedAt) : new Date();
         entries.push({
-          url: `${SITE_URL}/kategori/${category.slug}`,
-          lastModified: new Date(category.updatedAt),
+          url: `${SITE_URL}/kategori/${data.slug}`,
+          lastModified: updatedAt,
           changeFrequency: 'weekly',
           priority: 0.6,
         });
       }
     }
-  } catch {
-    // If fetch fails, just return the homepage entry
+  } catch (error) {
+    console.error('Sitemap generation error:', error);
+    // Still return static entries even if Firestore fails
   }
 
   return entries;
