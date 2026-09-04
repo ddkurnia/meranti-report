@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { isFirebaseConfigured, handleCors, successResponse, errorResponse, getAuthUser, requireRole } from '@/lib/api-helpers';
-import { deleteImage, extractPublicId } from '@/lib/cloudinary';
+import { deleteResource, extractPublicId } from '@/lib/cloudinary';
 
 export async function OPTIONS(request: NextRequest) {
   const cors = handleCors(request);
@@ -35,13 +35,14 @@ export async function DELETE(
     const mediaData = doc.data();
     if (!mediaData) return errorResponse('Media data not found', 404);
 
-    // Delete from Cloudinary
+    // Delete from Cloudinary (supports both image and video)
+    const resourceType = mediaData.resourceType || 'image';
     try {
       if (mediaData.publicId) {
-        await deleteImage(mediaData.publicId);
+        await deleteResource(mediaData.publicId, resourceType);
       } else if (mediaData.secureUrl) {
         const publicId = extractPublicId(mediaData.secureUrl);
-        if (publicId) await deleteImage(publicId);
+        if (publicId) await deleteResource(publicId, resourceType);
       }
     } catch (cloudinaryError) {
       console.error('Error deleting from Cloudinary:', cloudinaryError);

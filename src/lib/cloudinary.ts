@@ -100,6 +100,23 @@ export async function deleteImage(publicId: string): Promise<void> {
   });
 }
 
+/**
+ * Delete a resource from Cloudinary by publicId.
+ * Supports both image and video resource types.
+ */
+export async function deleteResource(publicId: string, resourceType: string = 'image'): Promise<void> {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.destroy(
+      publicId,
+      { resource_type: resourceType === 'video' ? 'video' : 'image' },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve();
+      }
+    );
+  });
+}
+
 export function extractPublicId(url: string): string {
   const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[^.]+)?$/);
   return match ? match[1] : '';
