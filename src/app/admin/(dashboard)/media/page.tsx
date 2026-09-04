@@ -334,7 +334,7 @@ export default function AdminMediaPage() {
           {filteredMedia.map((item) => (
             <div
               key={item.id}
-              className="group relative rounded-lg border bg-background overflow-hidden hover:ring-2 ring-primary transition-all"
+              className="group relative rounded-lg border bg-background overflow-hidden transition-all"
             >
               {/* Preview */}
               <div className="aspect-square overflow-hidden bg-muted relative">
@@ -356,13 +356,13 @@ export default function AdminMediaPage() {
                   <img
                     src={item.secureUrl}
                     alt={item.publicId}
-                    className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                    className="h-full w-full object-cover"
                   />
                 )}
               </div>
 
               {/* Info */}
-              <div className="p-2 space-y-0.5">
+              <div className="p-2 space-y-1">
                 <p className="text-xs font-medium truncate">{item.publicId?.split('/').pop() || 'unknown'}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   {item.width && item.height ? (
@@ -372,35 +372,30 @@ export default function AdminMediaPage() {
                     <span>{formatFileSize(item.size)}</span>
                   ) : null}
                 </div>
-              </div>
-
-              {/* Overlay on hover */}
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-                <div className="flex gap-2">
+                {/* Action Buttons - always visible */}
+                <div className="flex items-center gap-1 pt-1">
                   <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-8 w-8"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 flex-1 text-xs gap-1"
                     title="Salin URL"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      copyUrl(item.secureUrl);
-                    }}
+                    onClick={() => copyUrl(item.secureUrl)}
                   >
-                    <Copy className="h-4 w-4" />
+                    <Copy className="h-3 w-3" />
+                    Salin
                   </Button>
                   <Button
                     variant="destructive"
-                    size="icon"
-                    className="h-8 w-8"
+                    size="sm"
+                    className="h-7 flex-1 text-xs gap-1"
                     title="Hapus"
-                    onClick={(e) => {
-                      e.stopPropagation();
+                    onClick={() => {
                       setDeleteId(item.id);
                       setDeleteItem(item);
                     }}
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3 w-3" />
+                    Hapus
                   </Button>
                 </div>
               </div>
